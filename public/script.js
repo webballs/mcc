@@ -10,8 +10,15 @@ cookie.addEventListener('click', () => {
     // Sende ein 'click'-Ereignis an den Server
     socket.emit('click');
 
-    // Optional: Visueller Klick-Effekt
+    // Optional: Visueller Klick-Effekt (+1 Text)
     createClickEffect();
+
+    // NEU: Cookie-Rotation
+    cookie.classList.add('rotate'); // Fügt die 'rotate'-Klasse hinzu
+    // Entferne die Klasse nach der Animation, damit sie beim nächsten Klick erneut ausgelöst werden kann
+    cookie.addEventListener('animationend', () => {
+        cookie.classList.remove('rotate');
+    }, { once: true }); // { once: true } sorgt dafür, dass dieser Listener nur einmal ausgelöst wird
 });
 
 // Event-Listener für die Aktualisierung des Zählers vom Server
@@ -36,7 +43,10 @@ function createClickEffect() {
     effect.style.left = `${cookieRect.left + cookieRect.width / 2}px`;
     effect.style.top = `${cookieRect.top + cookieRect.height / 2}px`;
 
-    container.appendChild(effect);
+    // Passe die Position für den +1-Effekt leicht an, damit er nicht mit der Drehung kollidiert
+    effect.style.transform = `translate(-50%, -100%)`; // Zentriert und etwas nach oben versetzt
+
+    document.body.appendChild(effect); // Füge es direkt zum Body hinzu, um über allem zu schweben
 
     // Entferne das Element nach der Animation
     effect.addEventListener('animationend', () => {

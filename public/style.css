@@ -70,3 +70,16 @@ p {
         transform: translateY(-50px);
     }
 }
+/* Neue CSS für Cookie-Drehung */
+.rotate {
+    animation: spin 0.3s ease-out; /* Kurze Drehanimation */
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(30deg); /* Dreht den Cookie 30 Grad im Uhrzeigersinn */
+    }
+}
