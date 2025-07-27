@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Cookie Clicker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Globaler Cookie-Clicker</h1>
+        <div id="counter-display">Klicks: <span id="click-count">0</span></div>
+        <img id="cookie" src="cookie.png" alt="Großer Cookie">
+        <p>Klicke auf den Cookie, um den globalen Zähler zu erhöhen!</p>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
