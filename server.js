@@ -12,8 +12,9 @@ const io = socketIo(server);
 // Redis-Client initialisieren
 // Wenn Redis auf einem anderen Host oder Port läuft, hier anpassen
 const redis = new Redis({
-    host: 'localhost', // Standard-Redis-Host
-    port: 6379         // Standard-Redis-Port
+    host: process.env.REDIS_HOST || 'localhost', // Nimmt Env-Variable, sonst localhost (lokal)
+    port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : 6379, // Nimmt Env-Variable, sonst 6379
+    password: process.env.REDIS_PASSWORD || undefined // Nimmt Env-Variable, sonst kein Passwort
 });
 
 const COUNTER_KEY = 'global_cookie_clicks';
