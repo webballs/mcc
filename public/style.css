@@ -70,9 +70,33 @@ p {
         transform: translateY(-50px);
     }
 }
-/* Neue CSS für Cookie-Drehung */
-.rotate {
-    animation: spin 0.3s ease-out; /* Kurze Drehanimation */
+/* public/style.css */
+
+/* ... (dein bestehender CSS-Code für body, .container, img#cookie, .click-effect) ... */
+
+img#cookie {
+    width: 200px;
+    height: 200px;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.1s ease-out; /* Behält den Klick-Effekt bei */
+    /* NEU: Dauerhafte Drehung */
+    animation: rotate360 10s linear infinite; /* Dreht sich 10 Sekunden lang, gleichmäßig, unendlich */
+}
+
+@keyframes rotate360 {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Die .rotate Klasse und @keyframes spin von der vorherigen Drehung kannst du entfernen,
+   wenn du nur die dauerhafte Drehung möchtest. */
+/* .rotate {
+    animation: spin 0.3s ease-out;
 }
 
 @keyframes spin {
@@ -80,6 +104,6 @@ p {
         transform: rotate(0deg);
     }
     to {
-        transform: rotate(30deg); /* Dreht den Cookie 30 Grad im Uhrzeigersinn */
+        transform: rotate(30deg);
     }
-}
+} */
