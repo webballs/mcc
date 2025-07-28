@@ -3,38 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interaktive Mikrowelle</title>
+    <title>3D-Mikrowelle (Three.js)</title>
     <link rel="stylesheet" href="microwave.css">
+    <script type="module" src="https://cdn.skypack.dev/three@0.129.0/build/three.module.js"></script>
+    <script type="module" src="https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/GLTFLoader.js"></script>
+    <script type="module" src="https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/OrbitControls.js"></script>
 </head>
 <body>
-    <div class="microwave-app-container">
-        <div class="microwave-display">
-            <canvas id="microwaveCanvas"></canvas>
-        </div>
 
-        <div class="controls-and-menu">
-            <div class="microwave-controls">
-                <div class="time-display">
-                    <span id="minutes-display">00</span>:<span id="seconds-display">00</span>
-                </div>
-                <div id="minute-knob"></div>
-                <button id="start-button">Start</button>
-                <button id="reset-button">Reset</button>
-            </div>
+    <h1>Unsere 3D-Mikrowelle</h1>
 
-            <div class="item-menu">
-                <h2>Zutaten</h2>
-                <div class="item-list">
-                    <div class="menu-item" draggable="true" data-item="chicken">Hähnchen</div>
-                    <div class="menu-item" draggable="true" data-item="pizza">Pizza</div>
-                    <div class="menu-item" draggable="true" data-item="coffee">Kaffee</div>
-                    <div class="menu-item" draggable="true" data-item="popcorn">Popcorn</div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <canvas id="microwaveCanvas"></canvas>
 
-    <a href="index.html" class="back-button">Zurück zur Startseite</a>
+    <p>Interagiere mit dem Modell, drehe es und zoome hinein!</p>
+
+    <button id="toggleDoorButton">Mikrowelle öffnen/schließen</button>
 
     <script type="module" src="microwave.js"></script>
 </body>
