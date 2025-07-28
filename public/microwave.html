@@ -5,55 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interaktive Mikrowelle</title>
     <link rel="stylesheet" href="microwave.css">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #e0e0e0;
-            color: #333;
-        }
-        .microwave-container {
-            text-align: center;
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        .microwave-container img {
-            max-width: 100%;
-            height: auto;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        .back-button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 1em;
-            color: white;
-            background-color: #f39c12;
-            border: none;
-            border-radius: 5px;
-            text-decoration: none;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        .back-button:hover {
-            background-color: #e67e22;
-        }
-    </style>
 </head>
 <body>
-    <div class="microwave-container">
-        <h1>Deine Interaktive Mikrowelle</h1>
-        <p>Hier entsteht bald eine interaktive Mikrowelle!</p>
-        <img id="microwave-image" src="" alt="Mikrowelle">
-        <a href="index.html" class="back-button">Zurück zur Startseite</a>
+    <div class="microwave-app-container">
+        <div class="microwave-display">
+            <canvas id="microwaveCanvas"></canvas>
+        </div>
+
+        <div class="controls-and-menu">
+            <div class="microwave-controls">
+                <div class="time-display">
+                    <span id="minutes-display">00</span>:<span id="seconds-display">00</span>
+                </div>
+                <div id="minute-knob"></div>
+                <button id="start-button">Start</button>
+                <button id="reset-button">Reset</button>
+            </div>
+
+            <div class="item-menu">
+                <h2>Zutaten</h2>
+                <div class="item-list">
+                    <div class="menu-item" draggable="true" data-item="chicken">Hähnchen</div>
+                    <div class="menu-item" draggable="true" data-item="pizza">Pizza</div>
+                    <div class="menu-item" draggable="true" data-item="coffee">Kaffee</div>
+                    <div class="menu-item" draggable="true" data-item="popcorn">Popcorn</div>
+                </div>
+            </div>
+        </div>
     </div>
-    <script src="microwave.js"></script>
+
+    <a href="index.html" class="back-button">Zurück zur Startseite</a>
+
+    <script type="module" src="microwave.js"></script>
 </body>
 </html>

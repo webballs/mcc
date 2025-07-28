@@ -1,0 +1,158 @@
+/* public/microwave.css */
+
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+.microwave-app-container {
+    display: flex;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    gap: 30px; /* Abstand zwischen Mikrowelle und Steuerung/Menü */
+}
+
+/* ------------------------------------------------------------------ */
+/* NEU ODER GEÄNDERT: Styling für den 3D-Canvas Container */
+.microwave-display {
+    position: relative; /* Wichtig für das Canvas-Element */
+    width: 600px; /* Breite des 3D-Viewports, anpassen nach Bedarf */
+    height: 400px; /* Höhe des 3D-Viewports, anpassen nach Bedarf */
+    background-color: #000; /* Schwarzer Hintergrund für den 3D-Bereich, kann geändert werden */
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#microwaveCanvas {
+    display: block; /* Entfernt zusätzlichen Platz unter dem Canvas */
+    width: 100%;
+    height: 100%;
+}
+/* ------------------------------------------------------------------ */
+
+
+.controls-and-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.microwave-controls {
+    background-color: #ddd;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.time-display {
+    font-size: 2.5em;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #e74c3c; /* Rote Farbe für die Zeit */
+}
+
+#minute-knob {
+    width: 80px;
+    height: 80px;
+    background-color: #34495e;
+    border-radius: 50%;
+    margin: 0 auto 20px auto;
+    cursor: grab;
+    position: relative;
+    border: 2px solid #2c3e50;
+}
+
+/* Simuliertes Zeichen für den Drehknopf */
+#minute-knob::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 20px;
+    background-color: #ecf0f1;
+    border-radius: 2px;
+}
+
+#start-button, #reset-button {
+    padding: 10px 20px;
+    font-size: 1.1em;
+    margin: 5px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+#start-button {
+    background-color: #27ae60;
+    color: white;
+}
+#start-button:hover {
+    background-color: #2ecc71;
+}
+#reset-button {
+    background-color: #e74c3c;
+    color: white;
+}
+#reset-button:hover {
+    background-color: #c0392b;
+}
+
+
+.item-menu {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.menu-item {
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: grab;
+    text-align: center;
+    transition: background-color 0.2s ease;
+}
+
+.menu-item:hover {
+    background-color: #e0e0e0;
+}
+
+.menu-item.dragging {
+    opacity: 0.5; /* Halbtransparent, wenn gezogen */
+}
+
+.back-button {
+    margin-top: 30px;
+    padding: 10px 20px;
+    font-size: 1em;
+    color: white;
+    background-color: #f39c12;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.back-button:hover {
+    background-color: #e67e22;
+}

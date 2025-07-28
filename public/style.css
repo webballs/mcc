@@ -70,28 +70,27 @@ p {
         transform: translateY(-50px);
     }
 }
-/* public/style.css */
+/* public/microwave.css */
 
-/* ... (dein bestehender CSS-Code für body, .container, img#cookie, .click-effect) ... */
+/* ... (vorheriger CSS-Code für body, .microwave-app-container, etc.) ... */
 
-img#cookie {
-    width: 200px;
-    height: 200px;
-    cursor: pointer;
-    user-select: none;
-    transition: transform 0.1s ease-out; /* Behält den Klick-Effekt bei */
-    /* NEU: Dauerhafte Drehung */
-    animation: rotate360 10s linear infinite; /* Dreht sich 10 Sekunden lang, gleichmäßig, unendlich */
+.microwave-display {
+    position: relative; /* Wichtig für das Canvas-Element */
+    width: 600px; /* Breite des 3D-Viewports, anpassen nach Bedarf */
+    height: 400px; /* Höhe des 3D-Viewports, anpassen nach Bedarf */
+    background-color: #000; /* Schwarzer Hintergrund für den 3D-Bereich, kann geändert werden */
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-@keyframes rotate360 {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+#microwaveCanvas {
+    display: block; /* Entfernt zusätzlichen Platz unter dem Canvas */
+    width: 100%;
+    height: 100%;
 }
+
+/* ... (der Rest des CSS-Codes) ... */
 
 /* Die .rotate Klasse und @keyframes spin von der vorherigen Drehung kannst du entfernen,
    wenn du nur die dauerhafte Drehung möchtest. */
