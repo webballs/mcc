@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Raycasting-Variablen
     const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
+    const mouse = new THREE.Vector2(); // Wird für Maus- und Touch-Koordinaten verwendet
 
     // Variablen für 3D-Modell und Animation
     let microwaveModel;
@@ -60,13 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const startButtonName = "start_button";
     const stopButtonName = "stop_button";
     const redLightObjectName = "microwave_red";
-
-    // *** HINZUGEFÜGT: Namen für Timer-Objekt und Animation ***
-    const timerObjectName = "microwave_timer"; // Name des Timer-Objekts in Blender
-    const timerAnimationName = "timer_animation"; // Name der Timer-Animation in Blender
+    const timerObjectName = "microwave_timer";
+    const timerAnimationName = "timer_animation";
 
     let redLightModelPart;
-    // *** HINZUGEFÜGT: Variablen für Timer-Objekt und AnimationAction ***
     let timerModelPart;
     let timerAction;
 
@@ -93,16 +90,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn(`Rotes Licht-Objekt "${redLightObjectName}" wurde im GLB-Modell nicht gefunden.`);
             }
 
-            // *** HINZUGEFÜGT: Timer-Objekt suchen ***
+            // Timer-Objekt suchen
             timerModelPart = microwaveModel.getObjectByName(timerObjectName);
             if (timerModelPart) {
                 console.log(`Timer-Objekt "${timerObjectName}" gefunden!`);
-                // Optional: Timer-Objekt initial unsichtbar machen, falls es nur während der Animation sichtbar sein soll
-                // timerModelPart.visible = false;
             } else {
                 console.warn(`Timer-Objekt "${timerObjectName}" wurde im GLB-Modell nicht gefunden.`);
             }
-
 
             mixer = new THREE.AnimationMixer(microwaveModel);
 
@@ -122,14 +116,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`Die Tür-Animation "${doorAnimationName}" konnte nicht gefunden werden. Bitte überprüfe den Namen in Blender.`);
             }
 
-            // *** HINZUGEFÜGT: Timer-Animation initialisieren ***
             const timerClip = THREE.AnimationClip.findByName(gltf.animations, timerAnimationName);
             if (timerClip) {
                 timerAction = mixer.clipAction(timerClip);
-                timerAction.loop = THREE.LoopOnce; // Oder THREE.LoopRepeat, je nachdem wie deine Animation aufgebaut ist
-                timerAction.clampWhenFinished = true; // Hält den letzten Frame, wenn LoopOnce
-                timerAction.enabled = true; // Muss enabled sein, um später abgespielt zu werden
-                timerAction.play(); // Kurz abspielen und stoppen, um den Startzustand zu setzen
+                timerAction.loop = THREE.LoopOnce;
+                timerAction.clampWhenFinished = true;
+                timerAction.enabled = true;
+                timerAction.play();
                 timerAction.stop();
                 console.log(`Animation "${timerAnimationName}" für den Timer initialisiert und pausiert.`);
             } else {
@@ -148,10 +141,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     );
 
-    // Klick-Event-Listener auf dem Canvas für Raycasting
-    canvas.addEventListener('click', onCanvasClick);
+    // Klick-Event-Listener für Maus
+    canvas.addEventListener('click', onCanvasInteraction);
+    // *** HINZUGEFÜGT: Touch-Event-Listener für Mobilgeräte ***
+    canvas.addEventListener('touchstart', (event) => {
+        // Verhindert, dass der Browser das Standard-Scrollen/Zoomen macht
+        // event.preventDefault(); // Kann zu Problemen mit OrbitControls führen, daher vorsichtig verwenden
+        onCanvasInteraction(event); // Rufe dieselbe Logik auf
+    }, { passive: false }); // `passive: false` ist wichtig, um `preventDefault` zu erlauben
 
-    // Klick-Handler für den HTML-Button (optional, falls beides gewünscht ist)
+    // Klick-Handler für den HTML-Button
     toggleDoorButton.addEventListener('click', () => {
         if (!isAnimating && doorAction) {
             toggleDoorAnimation();
@@ -162,13 +161,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Raycasting-Funktion
-    function onCanvasClick(event) {
+    // *** MODIFIZIERTE Raycasting-Funktion zur Unterstützung von Maus- und Touch-Events ***
+    function onCanvasInteraction(event) {
         if (!microwaveModel) return;
 
+        let clientX, clientY;
+
+        // Prüfen, ob es ein Touch-Event ist
+        if (event.touches && event.touches.length > 0) {
+            clientX = event.touches[0].clientX;
+            clientY = event.touches[0].clientY;
+            // Konservative Annahme: Wenn mehr als ein Finger da ist, ist es Geste, kein Klick
+            if (event.touches.length > 1) {
+                console.log("Mehrere Finger erkannt, ignoriere als Klick.");
+                return;
+            }
+        } else { // Es ist ein Maus-Event
+            clientX = event.clientX;
+            clientY = event.clientY;
+        }
+
         const rect = renderer.domElement.getBoundingClientRect();
-        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-        mouse.y = - ((event.clientY - rect.top) / rect.height) * 2 + 1;
+        mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = - ((clientY - rect.top) / rect.height) * 2 + 1;
 
         raycaster.setFromCamera(mouse, camera);
 
@@ -238,13 +253,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('Rotes Licht (Modell-Teil) an.');
             }
 
-            // *** HINZUGEFÜGT: Timer-Animation starten ***
+            // Timer-Animation starten
             if (timerAction) {
                 timerAction.reset(); // Animation zurücksetzen
                 timerAction.play();
                 console.log('Timer-Animation gestartet.');
             }
-
 
             // 2. 10 Sekunden warten
             console.log('Warte 10 Sekunden...');
@@ -287,11 +301,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('Rotes Licht (Modell-Teil) aus.');
             }
 
-            // *** HINZUGEFÜGT: Timer-Animation stoppen und zurücksetzen ***
+            // Timer-Animation stoppen und zurücksetzen
             if (timerAction) {
                 timerAction.stop();
                 timerAction.reset(); // Wichtig, um den Timer für den nächsten Durchlauf zurückzusetzen
-                console.log('Timer-Animation gestoppt und zurückgesetzt.');
+                console.log('Timer-animation gestoppt und zurückgesetzt.');
             }
 
             // Stelle sicher, dass die Tür geöffnet ist, falls der Prozess abgebrochen wurde
