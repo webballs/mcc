@@ -6,7 +6,7 @@ body {
     justify-content: center;
     min-height: 100vh;
     margin: 0;
-    background-color: #f0f0f0;
+    background-color: white; /* HIER GEÄNDERT: Von #f0f0f0 auf white */
     color: #333;
 }
 
@@ -20,7 +20,7 @@ h1 {
     width: 80%; /* Oder eine feste Breite wie 600px */
     max-width: 800px; /* Begrenzt die maximale Breite */
     height: 500px; /* Die Höhe des 3D-Viewports */
-    background-color: #ffffff; /* Hintergrund des Canvas */
+    background-color: #e70808; /* Hintergrund des Canvas (bereits weiß) */
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     display: block; /* Wichtig, um zusätzliche Abstände zu vermeiden */
@@ -46,4 +46,41 @@ p {
 
 #toggleDoorButton:hover {
     background-color: #45a049;
+}
+
+/* HINZUGEFÜGT: Stil für die Item-Auswahlleiste und Buttons */
+#itemSelection {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+    background-color: rgba(0, 0, 0, 0.05); /* Leichter, fast unsichtbarer Hintergrund */
+    padding: 15px;
+    border-radius: 8px;
+    /* box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); */ /* Optional, wenn du einen leichten Schatten willst */
+}
+
+.itemButton {
+    background-color: #007bff; /* Blau, passend zu anderen Buttons */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+.itemButton:hover {
+    background-color: #0056b3;
+}
+
+.itemButton:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+/* Optional: Wenn du die "Interagiere mit dem Modell..." Textfarbe anpassen willst */
+p {
+    color: #333; /* Dunklerer Text auf weißem Hintergrund */
 }
