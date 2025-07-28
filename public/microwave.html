@@ -3,21 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D-Mikrowelle (Three.js)</title>
-    <link rel="stylesheet" href="microwave.css">
-    <script type="module" src="https://cdn.skypack.dev/three@0.129.0/build/three.module.js"></script>
-    <script type="module" src="https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/GLTFLoader.js"></script>
-    <script type="module" src="https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/OrbitControls.js"></script>
+    <title>Mikrowelle 3D</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* CSS für die Item-Leiste */
+        #itemSelection {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .itemButton {
+            background-color: #4CAF50; /* Grüne Farbe */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .itemButton:hover {
+            background-color: #45a049;
+        }
+
+        .itemButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        /* Füge dies zum vorhandenen Style.css hinzu oder in einen neuen Style-Block */
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #282c34; /* Dunkler Hintergrund */
+            color: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden; /* Verhindert Scrollbalken */
+        }
+
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 5px;
+            border: none;
+            background-color: #007bff; /* Blau */
+            color: white;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #microwaveCanvas {
+            width: 80vw; /* Responsive Breite */
+            height: 60vh; /* Responsive Höhe */
+            max-width: 900px; /* Maximale Breite */
+            max-height: 600px; /* Maximale Höhe */
+            background-color: #3a3f4a;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-
-    <h1>Unsere 3D-Mikrowelle</h1>
-
+    <h1>Mikrowelle Simulation</h1>
     <canvas id="microwaveCanvas"></canvas>
+    <div id="controls">
+        <button id="toggleDoorButton">Tür öffnen/schließen</button>
+        </div>
 
-    <p>Interagiere mit dem Modell, drehe es und zoome hinein!</p>
-
-    <button id="toggleDoorButton">Mikrowelle öffnen/schließen</button>
+    <div id="itemSelection">
+        <button class="itemButton" data-item="pizza">Pizza</button>
+        <button class="itemButton" data-item="popcorn">Popcorn</button>
+        <button class="itemButton" data-item="coffee">Kaffee</button>
+    </div>
 
     <script type="module" src="microwave.js"></script>
 </body>

@@ -7,9 +7,11 @@ import { OrbitControls } from "https://cdn.skypack.dev/three@0.129.0/examples/js
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('microwaveCanvas');
     const toggleDoorButton = document.getElementById('toggleDoorButton');
+    // HINZUGEFÜGT: Referenz auf die Item-Buttons
+    const itemButtons = document.querySelectorAll('.itemButton');
 
-    if (!canvas || !toggleDoorButton) {
-        console.error('Canvas oder Button nicht gefunden!');
+    if (!canvas || !toggleDoorButton || itemButtons.length === 0) {
+        console.error('Canvas, Button oder Item-Buttons nicht gefunden!');
         return;
     }
 
@@ -41,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Raycasting-Variablen
     const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2(); // Wird für Maus- und Touch-Koordinaten verwendet
+    const mouse = new THREE.Vector2();
 
     // Variablen für 3D-Modell und Animation
     let microwaveModel;
@@ -67,10 +69,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let timerModelPart;
     let timerAction;
 
+    // *** HINZUGEFÜGT: Item-Verwaltung ***
+    let currentLoadedItem = null; // Referenz auf das aktuell geladene Item-Modell
+    let currentItemType = null;   // Speichert den Typ des aktuellen Items (z.B. 'pizza', 'popcorn')
+    const itemLoader = new GLTFLoader(); // Separater Loader für Items
+    // Position für die Items in der Mikrowelle (muss eventuell angepasst werden)
+    const itemPosition = new THREE.Vector3(0, 0.8, 0.4); // Beispielkoordinaten: X, Y, Z
+
     // Button initial deaktivieren
     toggleDoorButton.disabled = true;
 
-    // GLTF-Loader
+    // GLTF-Loader für Mikrowelle
     const loader = new GLTFLoader();
     loader.load(
         'models/microwave_model.glb',
@@ -81,16 +90,14 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('3D-Modell "microwave_model.glb" erfolgreich geladen!');
             console.log('Verfügbare Animationen (Three.js):', gltf.animations.map(a => a.name));
 
-            // Rotes Licht-Objekt im geladenen Modell suchen
             redLightModelPart = microwaveModel.getObjectByName(redLightObjectName);
             if (redLightModelPart) {
                 console.log(`Rotes Licht-Objekt "${redLightObjectName}" gefunden!`);
-                redLightModelPart.visible = false; // Anfangs unsichtbar setzen
+                redLightModelPart.visible = false;
             } else {
                 console.warn(`Rotes Licht-Objekt "${redLightObjectName}" wurde im GLB-Modell nicht gefunden.`);
             }
 
-            // Timer-Objekt suchen
             timerModelPart = microwaveModel.getObjectByName(timerObjectName);
             if (timerModelPart) {
                 console.log(`Timer-Objekt "${timerObjectName}" gefunden!`);
@@ -141,42 +148,118 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     );
 
-    // Klick-Event-Listener für Maus
+    // Klick-Event-Listener für Maus und Touch
     canvas.addEventListener('click', onCanvasInteraction);
-    // *** HINZUGEFÜGT: Touch-Event-Listener für Mobilgeräte ***
     canvas.addEventListener('touchstart', (event) => {
-        // Verhindert, dass der Browser das Standard-Scrollen/Zoomen macht
-        // event.preventDefault(); // Kann zu Problemen mit OrbitControls führen, daher vorsichtig verwenden
-        onCanvasInteraction(event); // Rufe dieselbe Logik auf
-    }, { passive: false }); // `passive: false` ist wichtig, um `preventDefault` zu erlauben
+        //event.preventDefault(); // Vorsichtig verwenden, kann OrbitControls beeinflussen
+        onCanvasInteraction(event);
+    }, { passive: false });
 
     // Klick-Handler für den HTML-Button
     toggleDoorButton.addEventListener('click', () => {
-        if (!isAnimating && doorAction) {
+        if (!isAnimating && doorAction && !processRunning) { // Kann Tür nicht manuell öffnen/schließen, wenn Prozess läuft
             toggleDoorAnimation();
         } else if (isAnimating) {
             console.log('Animation läuft bereits, bitte warten.');
+        } else if (processRunning) {
+            console.log('Prozess läuft, kann Tür nicht manuell öffnen/schließen.');
         } else {
             console.warn('Tür-Animation noch nicht verfügbar.');
         }
     });
 
-    // *** MODIFIZIERTE Raycasting-Funktion zur Unterstützung von Maus- und Touch-Events ***
+    // *** HINZUGEFÜGT: Event Listener für die Item-Buttons ***
+    itemButtons.forEach(button => {
+        button.addEventListener('click', (event) => {
+            // Nur laden, wenn kein Prozess läuft und Tür offen ist
+            if (!processRunning && !isAnimating && doorOpen) {
+                const itemType = event.target.dataset.item;
+                loadItem(itemType);
+            } else if (!doorOpen) {
+                console.log('Tür muss offen sein, um ein Item zu platzieren.');
+            } else if (processRunning || isAnimating) {
+                console.log('Prozess läuft oder Animation aktiv, kann Item nicht wechseln.');
+            }
+        });
+    });
+
+    // *** HINZUGEFÜGT: Funktion zum Laden eines Items (v1) ***
+    function loadItem(itemType) {
+        if (currentLoadedItem) {
+            scene.remove(currentLoadedItem);
+            currentLoadedItem = null;
+        }
+
+        const modelPath = `models/${itemType}_v1.glb`; // Dateiname: z.B. pizza_v1.glb
+        console.log(`Lade Item: ${itemType} (${modelPath})`);
+        itemLoader.load(
+            modelPath,
+            (gltf) => {
+                currentLoadedItem = gltf.scene;
+                currentLoadedItem.position.copy(itemPosition); // Positionieren
+                // Optional: Skalierung anpassen, falls nötig
+                // currentLoadedItem.scale.set(0.1, 0.1, 0.1);
+                scene.add(currentLoadedItem);
+                currentItemType = itemType; // Item-Typ speichern
+                console.log(`Item "${itemType}" geladen.`);
+            },
+            (xhr) => {
+                console.log(`Item ${itemType}: ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`);
+            },
+            (error) => {
+                console.error(`Fehler beim Laden von Item "${itemType}" (${modelPath}):`, error);
+                alert(`Fehler beim Laden von Item "${itemType}". Bitte überprüfen Sie die Datei und den Pfad.`);
+            }
+        );
+    }
+
+    // *** HINZUGEFÜGT: Funktion zum Ersetzen des Items durch v2-Version ***
+    function replaceItemWithCookedVersion() {
+        if (!currentItemType || !currentLoadedItem) {
+            console.log('Kein Item geladen, um es zu kochen.');
+            return;
+        }
+
+        // Entferne die aktuelle (v1) Version
+        scene.remove(currentLoadedItem);
+        currentLoadedItem = null;
+
+        const cookedModelPath = `models/${currentItemType}_v2.glb`; // z.B. pizza_v2.glb
+        console.log(`Lade gekochtes Item: ${currentItemType} (${cookedModelPath})`);
+        itemLoader.load(
+            cookedModelPath,
+            (gltf) => {
+                currentLoadedItem = gltf.scene;
+                currentLoadedItem.position.copy(itemPosition); // Position beibehalten
+                // Optional: Skalierung anpassen, falls nötig
+                // currentLoadedItem.scale.set(0.1, 0.1, 0.1);
+                scene.add(currentLoadedItem);
+                console.log(`Item "${currentItemType}" wurde zu "v2" gewechselt.`);
+            },
+            (xhr) => {
+                console.log(`Gekochtes Item ${currentItemType}: ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`);
+            },
+            (error) => {
+                console.error(`Fehler beim Laden der gekochten Version von Item "${currentItemType}" (${cookedModelPath}):`, error);
+                alert(`Fehler beim Laden der gekochten Version von Item "${currentItemType}".`);
+            }
+        );
+    }
+
+
     function onCanvasInteraction(event) {
         if (!microwaveModel) return;
 
         let clientX, clientY;
 
-        // Prüfen, ob es ein Touch-Event ist
         if (event.touches && event.touches.length > 0) {
             clientX = event.touches[0].clientX;
             clientY = event.touches[0].clientY;
-            // Konservative Annahme: Wenn mehr als ein Finger da ist, ist es Geste, kein Klick
             if (event.touches.length > 1) {
                 console.log("Mehrere Finger erkannt, ignoriere als Klick.");
                 return;
             }
-        } else { // Es ist ein Maus-Event
+        } else {
             clientX = event.clientX;
             clientY = event.clientY;
         }
@@ -202,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Getroffen: ${firstHitObject.name}`);
 
             if (firstHitObject.name === doorMeshName) {
-                if (!isAnimating && !processRunning) {
+                if (!isAnimating && doorAction && !processRunning) { // Tür kann nicht manuell bewegt werden, wenn Prozess läuft
                     toggleDoorAnimation();
                 } else if (isAnimating) {
                     console.log('Tür-Animation läuft bereits.');
@@ -210,9 +293,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log('Prozess läuft, kann Tür nicht manuell öffnen/schließen.');
                 }
             } else if (firstHitObject.name === startButtonName) {
-                if (!isAnimating && !processRunning) {
+                // HINZUGEFÜGT: Prüfen, ob ein Item geladen ist
+                if (!isAnimating && !processRunning && !doorOpen && currentLoadedItem) {
                     console.log('Start-Button gedrückt!');
                     closeDoorAndOpenAfterDelay();
+                } else if (doorOpen) {
+                    console.log('Tür muss geschlossen sein, um zu starten.');
+                } else if (!currentLoadedItem) {
+                    console.log('Kein Item in der Mikrowelle. Bitte wähle eines aus.');
                 } else {
                     console.log('Kann nicht gestartet werden, Animation oder Prozess läuft bereits.');
                 }
@@ -225,7 +313,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Funktion zum Schließen der Tür, Warten und Öffnen
     async function closeDoorAndOpenAfterDelay() {
         if (!doorAction) {
             console.warn('Tür-Animation nicht verfügbar.');
@@ -234,6 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         processRunning = true;
         toggleDoorButton.disabled = true;
+        itemButtons.forEach(btn => btn.disabled = true); // Item-Buttons deaktivieren
         processAbortController = new AbortController();
 
         try {
@@ -255,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Timer-Animation starten
             if (timerAction) {
-                timerAction.reset(); // Animation zurücksetzen
+                timerAction.reset();
                 timerAction.play();
                 console.log('Timer-Animation gestartet.');
             }
@@ -274,6 +362,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             console.log('10 Sekunden vorbei.');
+            // *** HINZUGEFÜGT: Item durch gekochte Version ersetzen ***
+            replaceItemWithCookedVersion();
+
 
             // 3. Tür öffnen
             if (!doorOpen) {
@@ -293,6 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             processRunning = false;
             toggleDoorButton.disabled = false;
+            itemButtons.forEach(btn => btn.disabled = false); // Item-Buttons wieder aktivieren
             processAbortController = null;
 
             // Rotes Licht-Objekt ausschalten
@@ -304,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Timer-Animation stoppen und zurücksetzen
             if (timerAction) {
                 timerAction.stop();
-                timerAction.reset(); // Wichtig, um den Timer für den nächsten Durchlauf zurückzusetzen
+                timerAction.reset();
                 console.log('Timer-animation gestoppt und zurückgesetzt.');
             }
 
@@ -318,7 +410,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Funktion zum Abbrechen des Mikrowellenprozesses
     function abortMicrowaveProcess() {
         if (processRunning && processAbortController) {
             console.log('Abbruchsignal gesendet!');
@@ -332,7 +423,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Hilfsfunktion, um auf das Ende der Türanimation zu warten
     function waitForAnimationEnd() {
         return new Promise(resolve => {
             const onFinished = (e) => {
@@ -350,6 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         isAnimating = true;
         toggleDoorButton.disabled = true;
+        itemButtons.forEach(btn => btn.disabled = true); // Item-Buttons deaktivieren während Türanimation
 
         doorAction.loop = THREE.LoopOnce;
         doorAction.clampWhenFinished = true;
@@ -377,6 +468,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             isAnimating = false;
             toggleDoorButton.disabled = false;
+            // Item-Buttons wieder aktivieren, wenn die Tür offen ist und kein Prozess läuft
+            if (!processRunning && doorOpen) {
+                itemButtons.forEach(btn => btn.disabled = false);
+            }
             doorOpen = !doorOpen;
 
             mixer.removeEventListener('finished', onAnimationFinished);
