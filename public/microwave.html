@@ -3,42 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mikrowelle 3D</title>
+    <title>interactive microwave3000</title> <!-- Titel aktualisiert -->
     <link rel="stylesheet" href="style.css">
     <style>
-        /* CSS für die Item-Leiste */
-        #itemSelection {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
-            background-color: rgba(0, 0, 0, 0.6);
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .itemButton {
-            background-color: #4CAF50; /* Grüne Farbe */
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-        }
-
-        .itemButton:hover {
-            background-color: #45a049;
-        }
-
-        .itemButton:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-
-        /* Füge dies zum vorhandenen Style.css hinzu oder in einen neuen Style-Block */
+        /* Allgemeine Body-Styles */
         body {
             display: flex;
             flex-direction: column;
@@ -47,60 +15,149 @@
             min-height: 100vh;
             margin: 0;
             background-color: #ffffff; /* Dunkler Hintergrund */
-            color: rgb(0, 0, 0);
-            font-family: Arial, sans-serif;
+            color: #333; /* Textfarbe für bessere Lesbarkeit auf hellem Hintergrund */
+            font-family: 'Inter', sans-serif; /* Empfohlene Schriftart */
             overflow: hidden; /* Verhindert Scrollbalken */
+            padding: 20px; /* Etwas Polsterung am Rand */
         }
 
-        #controls {
-            margin-top: 20px;
-            display: flex;
-            gap: 10px;
+        /* Hauptüberschrift */
+        h1 {
+            color: #007bff; /* Farbe der Überschrift */
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
         }
 
-        button {
-            padding: 10px 20px;
-            font-size: 1em;
-            cursor: pointer;
-            border-radius: 5px;
-            border: none;
-            background-color: #007bff; /* Blau */
-            color: white;
-            transition: background-color 0.2s;
-        }
-
-        button:hover {
-            background-color: #ffffff;
-        }
-
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-
+        /* Canvas für die Mikrowelle */
         #microwaveCanvas {
             width: 80vw; /* Responsive Breite */
             height: 60vh; /* Responsive Höhe */
             max-width: 900px; /* Maximale Breite */
             max-height: 600px; /* Maximale Höhe */
             background-color: #3a3f4a;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            border-radius: 15px; /* Etwas stärkere Rundung */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4); /* Stärkerer Schatten */
             margin-top: 20px;
+            border: 2px solid #555; /* Leichter Rand */
+        }
+
+        /* Container für die Item-Auswahl */
+        #itemSelection {
+            display: flex;
+            justify-content: center;
+            gap: 20px; /* Größerer Abstand zwischen den Buttons */
+            margin-top: 30px; /* Mehr Abstand zum Canvas */
+            background-color: #f0f0f0; /* Hellerer Hintergrund für die Leiste */
+            padding: 20px;
+            border-radius: 12px; /* Stärkere Rundung */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            flex-wrap: wrap; /* Ermöglicht Umbruch auf kleineren Bildschirmen */
+        }
+
+        /* Style für Item-Buttons */
+        .itemButton {
+            background-color: #28a745; /* Ein schöneres Grün */
+            color: white;
+            padding: 10px; /* Angepasstes Padding für Bilder */
+            border: none;
+            border-radius: 10px; /* Abgerundete Ecken */
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease; /* Sanftere Übergänge */
+            display: flex; /* Flexbox für Bild und Text */
+            flex-direction: column; /* Bild über Text */
+            align-items: center;
+            justify-content: center;
+            min-width: 100px; /* Mindestbreite für Buttons */
+            height: 100px; /* Feste Höhe für einheitliches Aussehen */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .itemButton:hover {
+            background-color: #218838; /* Dunkleres Grün beim Hover */
+            transform: translateY(-3px); /* Leichter "Pop"-Effekt */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .itemButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none; /* Kein Pop-Effekt wenn disabled */
+            box-shadow: none;
+            opacity: 0.7; /* Leicht transparent, wenn disabled */
+        }
+
+        /* Style für Bilder innerhalb der Item-Buttons */
+        .itemButton img {
+            max-width: 60px; /* Maximale Breite des Bildes */
+            max-height: 60px; /* Maximale Höhe des Bildes */
+            border-radius: 8px; /* Abgerundete Ecken für Bilder */
+            margin-bottom: 5px; /* Abstand zwischen Bild und Text */
+            object-fit: contain; /* Bildinhalt anpassen */
+        }
+
+        /* Der alte #controls-Block ist jetzt leer und kann entfernt werden,
+           aber ich lasse ihn hier als Kommentar, falls du ihn später brauchst. */
+        /*
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        */
+
+        /* Generelle Button-Styles (falls noch andere Buttons existieren, die nicht itemButton sind) */
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 8px; /* Einheitliche Rundung */
+            border: none;
+            background-color: #007bff; /* Blau */
+            color: white;
+            transition: background-color 0.2s, transform 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #0056b3; /* Dunkleres Blau beim Hover */
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
         }
     </style>
 </head>
 <body>
-    <h1>Mikrowelle Simulation</h1>
+    <h1>interactive microwave3000</h1> <!-- Überschrift aktualisiert -->
     <canvas id="microwaveCanvas"></canvas>
-    <div id="controls">
+    
+    <!-- Der "Tür öffnen/schließen"-Button wurde entfernt -->
+    <!-- <div id="controls">
         <button id="toggleDoorButton">Tür öffnen/schließen</button>
-        </div>
+    </div> -->
 
     <div id="itemSelection">
-        <button class="itemButton" data-item="pizza">Pizza</button>
-        <button class="itemButton" data-item="popcorn">Popcorn</button>
-        <button class="itemButton" data-item="coffee">Kaffee</button>
+        <!-- Item-Buttons mit Bild-Tags aktualisiert -->
+        <button class="itemButton" data-item="pizza">
+            <img src="images/pizza_image.png" alt="Pizza">
+            <span>Pizza</span>
+        </button>
+        <button class="itemButton" data-item="popcorn">
+            <img src="images/popcorn_image.png" alt="Popcorn">
+            <span>Popcorn</span>
+        </button>
+        <button class="itemButton" data-item="coffee">
+            <img src="images/coffee_image.png" alt="Kaffee">
+            <span>Kaffee</span>
+        </button>
+        <!-- Füge hier weitere Buttons mit dem gleichen Muster hinzu -->
     </div>
 
     <script type="module" src="microwave.js"></script>

@@ -6,11 +6,13 @@ import { OrbitControls } from "https://cdn.skypack.dev/three@0.129.0/examples/js
 
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('microwaveCanvas');
-    const toggleDoorButton = document.getElementById('toggleDoorButton');
     const itemButtons = document.querySelectorAll('.itemButton');
 
-    if (!canvas || !toggleDoorButton || itemButtons.length === 0) {
-        console.error('FEHLER: HTML-Elemente nicht gefunden! Canvas, Toggle-Door-Button oder Item-Buttons fehlen.');
+    // WICHTIG: Titel des Dokuments ändern
+    document.title = "interactive microwave3000";
+
+    if (!canvas || itemButtons.length === 0) {
+        console.error('FEHLER: HTML-Elemente nicht gefunden! Canvas oder Item-Buttons fehlen.');
         return;
     }
 
@@ -22,23 +24,37 @@ document.addEventListener('DOMContentLoaded', () => {
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setClearColor(0xCCCCCC, 1); // Farbe auf Weiß (0xFFFFFF), Opazität auf 1 (vollständig deckend)
 
-    // Beleuchtung
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    // --- FARBEN ANPASSEN: Tone Mapping und Output Encoding für Blender-ähnlichen Look ---
+    renderer.outputEncoding = THREE.sRGBEncoding; // Wichtig für korrekte Farbdarstellung
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; // Verleiht einen filmischen Look
+    renderer.toneMappingExposure = 0.9; // Standardwert 1.0, 0.9 für etwas gedämpftere Farben
+    // --- ENDE FARBEN ANPASSEN ---
+
+    // Beleuchtung (Intensität leicht reduziert für weniger Sättigung)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Von 0.7 auf 0.4 reduziert
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5); // Von 0.8 auf 0.5 reduziert
     directionalLight.position.set(5, 5, 5).normalize();
     scene.add(directionalLight);
 
     // Kamera-Position (Anfangsbetrachtung)
-    camera.position.set(0, 1.5, 5);
+    camera.position.set(0, 1.5, 6);
 
     // OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.screenSpacePanning = false;
-    controls.maxPolarAngle = Math.PI / 2;
+    controls.dampingFactor = .25;
+
+    // Kamerasteuerung: Drehen, nicht bewegen, Zoomen, Blick unter die Mikrowelle
+    controls.enablePan = false; // Deaktiviert das Verschieben der Kamera
+    controls.enableZoom = true; // Ermöglicht das Zoomen
+    controls.minPolarAngle = 0; // Erlaubt Blick nach oben
+    controls.maxPolarAngle = Math.PI * 1; // Erlaubt Blick nach unten (ca. 180 Grad, direkter Blick nach unten)
+
+    // Den Mittelpunkt, auf den die Kamera schaut, höher setzen (anpassen, wenn nötig)
+    controls.target.set(0, 1.5, 0); 
+    controls.update(); 
 
     // Raycasting-Variablen
     const raycaster = new THREE.Raycaster();
@@ -69,37 +85,36 @@ document.addEventListener('DOMContentLoaded', () => {
     let timerModelPart;
     let timerAction;
 
-    // NEUE VARIABLEN FÜR DYNAMISCHE FEUER-PARTIKEL (KLONEN)
-    let fireParticlesGroup; // Eine Gruppe, die alle geklonten Feuer-Objekte enthält
-    let microwaveFireTemplate; // Das einzelne microwave_fire Objekt aus Blender als Template
+    // Variablen für dynamische Feuer-Partikel
+    let fireParticlesGroup; 
+    let microwaveFireTemplate; 
     
-    // NEU: Fester Bereich für die Partikelgenerierung (Anpassen an den Innenraum deiner Mikrowelle!)
+    // Fester Bereich für die Partikelgenerierung (Anpassen an den Innenraum deiner Mikrowelle!)
     const particleSpawnArea = {
-        minX: -2,    // Linke Grenze (aktualisiert)
-        maxX: 0.8,   // Rechte Grenze (aktualisiert)
-        minY: 0.6,   // Untere Start-Y-Position (aktualisiert)
-        minZ: -1.1,  // Hintere Grenze (aktualisiert)
-        maxZ: 0.7    // Vordere Grenze (aktualisiert)
+        minX: -2,   
+        maxX: 0.8,  
+        minY: 0.6,  
+        minZ: -1.1, 
+        maxZ: 0.7   
     };
 
-    const particleCount = 50; // Anzahl der Partikel (erhöht für mehr Dichte)
-    const particleMaxHeight = 2.0; // Wie hoch die Partikel steigen sollen (4x 0.5 = 2.0)
-    const particleMinLife = 1.0; // Minimale Lebensdauer in Sekunden
-    const particleMaxLife = 3.0; // Maximale Lebensdauer in Sekunden
-    const fireParticles = []; // Array zum Speichern der geklonten Partikel (für Animation)
-    const particleInitialScale = 1.0; // Partikelgröße auf 1 gesetzt (sehr groß zum Testen)
-    // ENDE NEUE VARIABLEN FÜR DYNAMISCHE FEUER-PARTIKEL
+    const particleCount = 100; // Anzahl der Partikel
+    const particleMaxHeight = 2.0; 
+    const particleMinLife = 1.0; 
+    const particleMaxLife = 3.0; 
+    const fireParticles = []; 
+    const particleInitialScale = 1.0; 
 
     // Item-Verwaltung
     let currentLoadedItem = null;
     let currentItemType = null;
+    let currentItemVersion = 1; // Neue Variable zur Speicherung der aktuellen Item-Version (initial 1)
     const itemLoader = new GLTFLoader();
     // Passe diese Position an, damit die Items in deiner Mikrowelle richtig liegen
-    const itemPosition = new THREE.Vector3(0, 0.8, 0.4); 
+    const itemPosition = new THREE.Vector3(-0.5, 0.45, 0); // Neue Item-Position
 
     // Initialisiere den Zustand der HTML-Buttons
-    toggleDoorButton.disabled = true; // Deaktiviert, bis Mikrowelle geladen ist
-    itemButtons.forEach(btn => btn.disabled = true); // Item-Buttons initial deaktiviert
+    itemButtons.forEach(btn => btn.disabled = true); 
 
     // GLTF-Loader für Mikrowelle
     const loader = new GLTFLoader();
@@ -111,8 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             console.log('[INIT] 3D-Modell "microwave_model.glb" erfolgreich geladen!');
             console.log("Alle verfügbaren Animationen im GLB-Modell:", gltf.animations);
-
-            // DEN BLOCK FÜR ALLGEMEINE TRANSPARENZ DER MIKROWELLE HABEN WIR HIER ENTFERNT
 
             redLightModelPart = microwaveModel.getObjectByName(redLightObjectName);
             if (redLightModelPart) {
@@ -161,26 +174,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`Die Timer-Animation "${timerAnimationName}" konnte nicht gefunden werden. Bitte überprüfe den Namen in Blender.`);
             }
 
-            // NEUER BEREICH FÜR DYNAMISCHE FEUER-PARTIKEL (KLONEN) START
-            // 1. Finde das "microwave_fire" Objekt im geladenen Modell
+            // Bereich für dynamische Feuer-Partikel (Klonen) START
             microwaveFireTemplate = microwaveModel.getObjectByName('microwave_fire');
             if (microwaveFireTemplate) {
                 console.log('[INIT] "microwave_fire" Template-Objekt gefunden!');
-                // Entferne das Originalobjekt, damit es nicht als einzelnes Objekt sichtbar ist
                 microwaveFireTemplate.parent.remove(microwaveFireTemplate); 
 
-                // NEU: Transparenz nur für das Partikel-Template (und somit für alle Klone) setzen
                 microwaveFireTemplate.traverse(child => {
                     if (child.isMesh && child.material) {
                         if (Array.isArray(child.material)) {
                             child.material.forEach(mat => {
                                 mat.transparent = true;
-                                mat.opacity = 0.5; // Transparenz 0.5 nur für Partikel
+                                mat.opacity = 0.5; 
                                 mat.needsUpdate = true;
                             });
                         } else {
                             child.material.transparent = true;
-                            child.material.opacity = 0.5; // Transparenz 0.5 nur für Partikel
+                            child.material.opacity = 0.5; 
                             child.material.needsUpdate = true;
                         }
                     }
@@ -189,18 +199,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 console.error('[INIT] "microwave_fire" Objekt NICHT im GLB-Modell gefunden! Das Klonen der Partikel ist nicht möglich.');
                 alert('Das "microwave_fire" Objekt wurde im GLB-Modell nicht gefunden. Bitte stelle sicher, dass es in Blender existiert und genau so benannt ist.');
-                return; // Breche hier ab, wenn das Template nicht gefunden wird
+                return; 
             }
 
-            // fire_plane Suche entfällt, da wir feste Koordinaten verwenden
-
-            // Erstelle die Partikelgruppe
             fireParticlesGroup = new THREE.Group();
             scene.add(fireParticlesGroup);
-            fireParticlesGroup.visible = false; // Initial unsichtbar
+            fireParticlesGroup.visible = false; 
 
-            createFireParticles(); // Erstelle die geklonten Feuer-Objekte
-            // ENDE NEUER BEREICH FÜR DYNAMISCHE FEUER-PARTIKEL
+            createFireParticles(); 
+            // ENDE Bereich für dynamische Feuer-Partikel
 
             animate();
         },
@@ -213,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     );
 
-    // NEUE FUNKTION: Erstellt die geklonten "microwave_fire" Objekte
+    // Funktion: Erstellt die geklonten "microwave_fire" Objekte
     function createFireParticles() {
         if (!microwaveFireTemplate) {
             console.warn('[PARTIKEL] Template fehlt. Partikel können nicht erstellt werden.');
@@ -222,16 +229,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const spawnWidth = particleSpawnArea.maxX - particleSpawnArea.minX;
         const spawnDepth = particleSpawnArea.maxZ - particleSpawnArea.minZ;
-        const spawnBaseY = particleSpawnArea.minY; // Die Y-Koordinate der Startfläche
+        const spawnBaseY = particleSpawnArea.minY; 
 
         for (let i = 0; i < particleCount; i++) {
             const particle = microwaveFireTemplate.clone(); 
             
-            // Material für jedes Partikel klonen und Farbe variieren
             particle.traverse(child => {
                 if (child.isMesh && child.material) {
-                    // Klone das Material, um individuelle Änderungen zu ermöglichen
-                    // Die Transparenz ist bereits auf dem Original-Template gesetzt
                     if (Array.isArray(child.material)) {
                         child.material = child.material.map(mat => mat.clone());
                     } else {
@@ -239,38 +243,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     if (child.material.color) {
-                        const baseColor = new THREE.Color(0xFF6600); // Eine Basis-Orange-Farbe
+                        const baseColor = new THREE.Color(0xFF6600); 
 
-                        // In HSL konvertieren, um Farbton (Hue), Sättigung (Saturation) und Helligkeit (Lightness) einfach zu variieren
                         const hsl = { h: 0, s: 0, l: 0 };
                         baseColor.getHSL(hsl);
 
-                        // Leichte zufällige Variationen
-                        const hueOffset = (Math.random() - 0.5) * 0.1;   // +/- 0.05 für Farbton
-                        const saturationOffset = (Math.random() - 0.5) * 0.2; // +/- 0.1 für Sättigung
-                        const lightnessOffset = (Math.random() - 0.5) * 0.1; // +/- 0.05 für Helligkeit
+                        const hueOffset = (Math.random() - 0.5) * 0.1;   
+                        const saturationOffset = (Math.random() - 0.5) * 0.2; 
+                        const lightnessOffset = (Math.random() - 0.5) * 0.1; 
 
-                        hsl.h = (hsl.h + hueOffset + 1) % 1; // Sicherstellen, dass der Farbton im Bereich 0-1 bleibt
-                        hsl.s = Math.max(0.6, Math.min(1, hsl.s + saturationOffset)); // Sättigung meist hoch halten
-                        hsl.l = Math.max(0.4, Math.min(0.8, hsl.l + lightnessOffset)); // Helligkeit in einem guten Bereich für Orange
+                        hsl.h = (hsl.h + hueOffset + 1) % 1; 
+                        hsl.s = Math.max(0.6, Math.min(1, hsl.s + saturationOffset)); 
+                        hsl.l = Math.max(0.4, Math.min(0.8, hsl.l + lightnessOffset)); 
 
                         child.material.color.setHSL(hsl.h, hsl.s, hsl.l);
                     }
-                    child.material.needsUpdate = true; // Wichtig, um die Materialänderung zu aktualisieren
+                    child.material.needsUpdate = true; 
                 }
             });
             
-            // Zufällige Position innerhalb des festen Bereichs (X und Z)
             particle.position.x = particleSpawnArea.minX + Math.random() * spawnWidth;
-            particle.position.y = spawnBaseY; // Start auf der festen Ebene
+            particle.position.y = spawnBaseY; 
             particle.position.z = particleSpawnArea.minZ + Math.random() * spawnDepth;
             
-            // Initialisiere Partikel-Eigenschaften für die Animation
             particle._initialY = particle.position.y;
-            particle._lifeSpan = particleMinLife + Math.random() * (particleMaxLife - particleMinLife); // Zufällige Lebensdauer
-            particle._currentAge = Math.random() * particle._lifeSpan; // Start mit zufälligem Alter für kontinuierlichen Fluss
-            particle._initialScale = new THREE.Vector3(particleInitialScale, particleInitialScale, particleInitialScale); // Speichern der Startskalierung
-            particle.scale.copy(particle._initialScale); // Setze initiale Skalierung
+            particle._lifeSpan = particleMinLife + Math.random() * (particleMaxLife - particleMinLife); 
+            particle._currentAge = Math.random() * particle._lifeSpan; 
+            particle._initialScale = new THREE.Vector3(particleInitialScale, particleInitialScale, particleInitialScale); 
+            particle.scale.copy(particle._initialScale); 
             
             fireParticlesGroup.add(particle);
             fireParticles.push(particle);
@@ -284,28 +284,14 @@ document.addEventListener('DOMContentLoaded', () => {
         onCanvasInteraction(event);
     }, { passive: false });
 
-    // Klick-Handler für den HTML-Button
-    toggleDoorButton.addEventListener('click', () => {
-        console.log(`[HTML BUTTON] Tür-Button geklickt. Zustände: isAnimating=${isAnimating}, processRunning=${processRunning}, isDoorOpen=${isDoorOpen}`);
-        if (!isAnimating && doorAction && !processRunning) {
-            toggleDoorAnimation();
-        } else if (isAnimating) {
-            console.log('[HTML BUTTON] Tür-Animation läuft bereits, bitte warten.');
-        } else if (processRunning) {
-            console.log('[HTML BUTTON] Prozess läuft, kann Tür nicht manuell öffnen/schließen.');
-        } else {
-            console.warn('[HTML BUTTON] Tür-Animation noch nicht verfügbar.');
-        }
-    });
-
     // Event Listener für die Item-Buttons
     itemButtons.forEach(button => {
         button.addEventListener('click', (event) => {
-            const itemType = event.target.dataset.item;
+            const itemType = event.currentTarget.dataset.item; 
             console.log(`[HTML BUTTON] Item-Button "${itemType}" geklickt. Zustände: isAnimating=${isAnimating}, processRunning=${processRunning}, isDoorOpen=${isDoorOpen}`);
 
             if (!processRunning && !isAnimating && isDoorOpen) { 
-                loadItem(itemType);
+                loadItem(itemType, 1); // Lade immer Version 1, wenn der Button geklickt wird
             } else {
                 if (!isDoorOpen) {
                     console.log('[ITEM BUTTON] Item kann nicht platziert werden: Tür ist geschlossen.');
@@ -318,15 +304,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    function loadItem(itemType) {
-        console.log(`[ITEM LADEN] Versuche Item "${itemType}" zu laden.`);
+    // loadItem Funktion angepasst, um eine spezifische Version zu laden
+    function loadItem(itemType, version) {
+        console.log(`[ITEM LADEN] Versuche Item "${itemType}" Version ${version} zu laden.`);
         if (currentLoadedItem) {
             console.log('[ITEM LADEN] Entferne vorheriges Item.');
             scene.remove(currentLoadedItem);
             currentLoadedItem = null;
         }
 
-        const modelPath = `models/${itemType}_v1.glb`;
+        const modelPath = `models/${itemType}_v${version}.glb`;
         console.log(`[ITEM LADEN] Lade: ${modelPath}`);
         itemLoader.load(
             modelPath,
@@ -335,53 +322,70 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentLoadedItem.position.copy(itemPosition); 
                 scene.add(currentLoadedItem);
                 currentItemType = itemType; 
-                console.log(`[ITEM LADEN] Item "${itemType}" erfolgreich geladen und platziert. currentLoadedItem ist jetzt:`, currentLoadedItem);
+                currentItemVersion = version; // Aktualisiere die aktuelle Version des Items
+                console.log(`[ITEM LADEN] Item "${itemType}" Version ${version} erfolgreich geladen und platziert.`);
             },
             (xhr) => {
-                console.log(`[ITEM LADE FORTSCHRITT] Item ${itemType}: ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`);
+                console.log(`[ITEM LADE FORTSCHRITT] Item ${itemType} v${version}: ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`);
             },
             (error) => {
-                console.error(`[FEHLER] Fehler beim Laden von Item "${itemType}" (${modelPath}):`, error);
-                alert(`Fehler beim Laden von Item "${itemType}". Überprüfen Sie die Datei und den Pfad in "models/${itemType}_v1.glb".`);
+                console.error(`[FEHLER] Fehler beim Laden von Item "${itemType}" Version ${version} (${modelPath}):`, error);
+                alert(`Fehler beim Laden von Item "${itemType}" Version ${version}. Überprüfen Sie die Datei und den Pfad in "models/${itemType}_v${version}.glb".`);
             }
         );
     }
 
+    // Funktion angepasst, um von V2 auf V3 zu wechseln
     function replaceItemWithCookedVersion() {
+        console.log(`[REPLACE ITEM] Starting for currentItemType: ${currentItemType}, currentLoadedItem present: ${!!currentLoadedItem}, currentItemVersion: ${currentItemVersion}`);
+
         if (!currentItemType || !currentLoadedItem) {
             console.log('[KOCHEN] Kein Item geladen, um es zu kochen. Überspringe Ersetzen.');
             return;
         }
 
-        console.log(`[KOCHEN] Ersetze Item "${currentItemType}" durch gekochte Version.`);
-        scene.remove(currentLoadedItem);
-        currentLoadedItem = null;
+        let nextVersion = currentItemVersion + 1; // Erhöhe die Version um 1
 
-        const cookedModelPath = `models/${currentItemType}_v2.glb`;
+        // Stelle sicher, dass du nicht über die maximale Version hinausgehst (hier 3)
+        // Du kannst dies anpassen, wenn du mehr Versionen hast.
+        if (nextVersion > 3) { 
+            console.log(`[REPLACE ITEM] Item "${currentItemType}" ist bereits auf der höchsten Version (V${currentItemVersion}). Kein weiteres Kochen möglich.`);
+            return;
+        }
+
+        console.log(`[KOCHEN] Ersetze Item "${currentItemType}" Version ${currentItemVersion} durch Version ${nextVersion}.`);
+        
+        scene.remove(currentLoadedItem); 
+        currentLoadedItem = null; // Setzt es temporär auf null, bevor das neue geladen wird
+
+        const cookedModelPath = `models/${currentItemType}_v${nextVersion}.glb`;
         console.log(`[KOCHEN] Lade gekochtes Item: ${cookedModelPath}`);
         itemLoader.load(
             cookedModelPath,
             (gltf) => {
-                currentLoadedItem = gltf.scene;
+                currentLoadedItem = gltf.scene; 
                 currentLoadedItem.position.copy(itemPosition);
-                scene.add(currentLoadedItem);
-                console.log(`[KOCHEN] Item "${currentItemType}" erfolgreich zu "v2" gewechselt.`);
+                scene.add(currentLoadedItem); 
+                currentItemVersion = nextVersion; // Aktualisiere die Versionsnummer nach dem Laden
+                console.log(`[KOCHEN] Item "${currentItemType}" erfolgreich auf "v${currentItemVersion}" gewechselt.`);
             },
             (xhr) => {
-                console.log(`[KOCHEN LADE FORTSCHRITT] Gekochtes Item ${currentItemType}: ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`);
+                console.log(`[KOCHEN LADE FORTSCHRITT] Gekochtes Item ${currentItemType} v${nextVersion}: ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`);
             },
             (error) => {
-                console.error(`[FEHLER] Fehler beim Laden der gekochten Version von Item "${currentItemType}" (${cookedModelPath}):`, error);
-                alert(`Fehler beim Laden der gekochten Version von Item "${currentItemType}". Überprüfen Sie die Datei und den Pfad in "models/${currentItemType}_v2.glb".`);
+                console.error(`[REPLACE ITEM ERROR] Fehler beim Laden der gekochten Version von Item "${currentItemType}" v${nextVersion} (${cookedModelPath}):`, error); 
+                alert(`Fehler beim Laden der gekochten Version von Item "${currentItemType}". Überprüfen Sie die Datei und den Pfad in "models/${currentItemType}_v${nextVersion}.glb".`);
             }
         );
     }
 
     function removeItem() {
         if (currentLoadedItem) {
+            console.log(`[REMOVE ITEM] Entferne Item:`, currentLoadedItem);
             scene.remove(currentLoadedItem);
             currentLoadedItem = null;
             currentItemType = null; 
+            currentItemVersion = 1; // Setze die Version zurück, wenn Item entfernt wird
             console.log('[ITEM] Item aus Mikrowelle entfernt.');
         } else {
             console.log('[ITEM] Keine Item zum Entfernen gefunden.');
@@ -483,12 +487,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('[PROZESS] Tür ist bereits geschlossen (isDoorOpen=false).'); 
             }
 
-            // NEUER BEREICH FÜR DYNAMISCHE FEUER-PARTIKEL START
+            // Bereich für dynamische Feuer-Partikel START
             if (fireParticlesGroup) {
-                fireParticlesGroup.visible = true; // Geklonte Partikel sichtbar machen
+                fireParticlesGroup.visible = true; 
                 console.log('[PROZESS] Geklonte "microwave_fire" Partikel sichtbar gemacht.');
             }
-            // ENDE NEUER BEREICH FÜR DYNAMISCHE FEUER-PARTIKEL
+            // ENDE Bereich für dynamische Feuer-Partikel
 
             // Rotes Licht-Objekt einschalten
             if (redLightModelPart) {
@@ -516,10 +520,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             console.log(`[PROZESS] ${delayInSeconds} Sekunden vorbei.`);
+            // Hier wird replaceItemWithCookedVersion() aufgerufen, die nun die nächste Version lädt
             if (currentLoadedItem) { 
                 replaceItemWithCookedVersion();
             } else {
-                console.log('[PROZESS] Kein Item geladen, daher kein Austausch auf V2-Version.');
+                console.log('[PROZESS] Kein Item geladen, daher kein Austausch auf nächste Version.');
             }
 
             if (!isDoorOpen && !isAnimating) { 
@@ -540,12 +545,12 @@ document.addEventListener('DOMContentLoaded', () => {
             processRunning = false;
             processAbortController = null;
 
-            // NEUER BEREICH FÜR DYNAMISCHE FEUER-PARTIKEL STOP
+            // Bereich für dynamische Feuer-Partikel STOP
             if (fireParticlesGroup) {
-                fireParticlesGroup.visible = false; // Geklonte Partikel ausblenden
+                fireParticlesGroup.visible = false; 
                 console.log('[PROZESS] Geklonte "microwave_fire" Partikel ausgeblendet.');
             }
-            // ENDE NEUER BEREICH FÜR DYNAMISCHE FEUER-PARTIKEL
+            // ENDE Bereich für dynamische Feuer-Partikel
 
             // Rotes Licht-Objekt ausschalten
             if (redLightModelPart) {
@@ -643,15 +648,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateButtonStates() {
         console.log(`[BUTTON UPDATE] Aktualisiere Button-Zustände. isAnimating=${isAnimating}, processRunning=${processRunning}, isDoorOpen=${isDoorOpen}, currentLoadedItem=${!!currentLoadedItem}`); 
 
-        toggleDoorButton.disabled = isAnimating || processRunning;
-        console.log(`[BUTTON UPDATE] toggleDoorButton.disabled = ${toggleDoorButton.disabled}`);
-
         itemButtons.forEach(btn => {
             btn.disabled = isAnimating || processRunning || !isDoorOpen; 
             console.log(`[BUTTON UPDATE] Item Button (${btn.dataset.item}).disabled = ${btn.disabled} (Basierend auf isDoorOpen=${isDoorOpen})`); 
         });
     }
-
 
     // Animations-Loop
     function animate() {
@@ -662,40 +663,35 @@ document.addEventListener('DOMContentLoaded', () => {
             mixer.update(delta);
         }
 
-        // NEUER BEREICH FÜR DYNAMISCHE FEUER-PARTIKEL ANIMATION START
-        if (fireParticlesGroup && fireParticlesGroup.visible) { // Nur animieren, wenn die Gruppe existiert und sichtbar ist
+        // Bereich für dynamische Feuer-Partikel Animation START
+        if (fireParticlesGroup && fireParticlesGroup.visible) { 
             fireParticles.forEach(particle => {
-                particle._currentAge += delta; // Alter des Partikels erhöhen
+                particle._currentAge += delta; 
 
-                // Wenn Partikel seine Lebensdauer erreicht hat, zurücksetzen
                 if (particle._currentAge > particle._lifeSpan) {
                     particle._currentAge = 0;
-                    // Neue zufällige Position innerhalb des festen Bereichs
                     const spawnWidth = particleSpawnArea.maxX - particleSpawnArea.minX;
                     const spawnDepth = particleSpawnArea.maxZ - particleSpawnArea.minZ;
                     particle.position.x = particleSpawnArea.minX + Math.random() * spawnWidth;
-                    particle.position.y = spawnBaseY; // Start auf der festen Ebene
+                    particle.position.y = spawnBaseY; 
                     particle.position.z = particleSpawnArea.minZ + Math.random() * spawnDepth;
-                    particle.scale.copy(particle._initialScale); // Skalierung zurücksetzen
+                    particle.scale.copy(particle._initialScale); 
                 }
 
-                const progress = particle._currentAge / particle._lifeSpan; // Fortschritt der Lebensdauer (0 bis 1)
+                const progress = particle._currentAge / particle._lifeSpan; 
 
-                // 1. Aufsteigen
                 particle.position.y = particle._initialY + progress * particleMaxHeight;
 
-                // 2. Kleiner werden (linear von initialScale zu 0)
                 const currentScale = particle._initialScale.clone().multiplyScalar(1 - progress);
                 particle.scale.copy(currentScale);
 
-                // Optionale: Leichte horizontale Fluktuation für "Flackern"
-                const fluctuation = 0.01; // Stärke des seitlichen "Wackelns"
-                const speed = 5; // Geschwindigkeit des Wackelns
+                const fluctuation = 0.01; 
+                const speed = 5; 
                 particle.position.x += Math.sin(particle._currentAge * speed + particle.id) * fluctuation * delta;
                 particle.position.z += Math.cos(particle._currentAge * speed * 0.8 + particle.id) * fluctuation * delta;
             });
         }
-        // ENDE NEUER BEREICH FÜR DYNAMISCHE FEUER-PARTIKEL ANIMATION
+        // ENDE Bereich für dynamische Feuer-Partikel Animation
 
         controls.update();
 
