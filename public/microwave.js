@@ -25,16 +25,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderer.setClearColor(0xCCCCCC, 1); // Farbe auf Weiß (0xFFFFFF), Opazität auf 1 (vollständig deckend)
 
     // --- FARBEN ANPASSEN: Tone Mapping und Output Encoding für Blender-ähnlichen Look ---
-    renderer.outputEncoding = THREE.sRGBEncoding; // Wichtig für korrekte Farbdarstellung
-    renderer.toneMapping = THREE.ACESFilmicToneMapping; // Verleiht einen filmischen Look
-    renderer.toneMappingExposure = 0.9; // Standardwert 1.0, 0.9 für etwas gedämpftere Farben
+    // Diese Einstellungen sind entscheidend, um die Farbsättigung zu kontrollieren!
+    renderer.outputEncoding = THREE.sRGBEncoding; // Stellt sicher, dass die Ausgabe im sRGB-Farbraum erfolgt
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; // Wendet den ACES Filmic Tone Mapping-Algorithmus an
+    renderer.toneMappingExposure = 0.9; // Reguliert die Belichtung vor dem Tone Mapping (Standard 1.0, niedriger = dezenter)
     // --- ENDE FARBEN ANPASSEN ---
 
-    // Beleuchtung (Intensität leicht reduziert für weniger Sättigung)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Von 0.7 auf 0.4 reduziert
+    // Beleuchtung (wieder heller gestellt)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Wieder auf 0.7
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5); // Von 0.8 auf 0.5 reduziert
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Wieder auf 0.8
     directionalLight.position.set(5, 5, 5).normalize();
     scene.add(directionalLight);
 
