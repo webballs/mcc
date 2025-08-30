@@ -3,12 +3,12 @@
 import * as THREE from "https://cdn.skypack.dev/three@0.129.0/build/three.module.js";
 import { GLTFLoader } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/OrbitControls.js";
+import * as CANNON from 'https://cdn.skypack.dev/cannon-es';
 
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('microwaveCanvas');
     const itemButtons = document.querySelectorAll('.itemButton');
 
-    // WICHTIG: Titel des Dokuments ändern
     document.title = "interactive microwave3000";
 
     if (!canvas || itemButtons.length === 0) {
@@ -16,61 +16,48 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Szene, Kamera, Renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
     renderer.setSize(canvas.clientWidth, canvas.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setClearColor(0xCCCCCC, 1); // Farbe auf Weiß (0xFFFFFF), Opazität auf 1 (vollständig deckend)
+    renderer.setClearColor(0xFFFFFF, 1);
 
-    // --- FARBEN ANPASSEN: Tone Mapping und Output Encoding für Blender-ähnlichen Look ---
-    // Diese Einstellungen sind entscheidend, um die Farbsättigung zu kontrollieren!
-    renderer.outputEncoding = THREE.sRGBEncoding; // Stellt sicher, dass die Ausgabe im sRGB-Farbraum erfolgt
-    renderer.toneMapping = THREE.ACESFilmicToneMapping; // Wendet den ACES Filmic Tone Mapping-Algorithmus an
-    renderer.toneMappingExposure = 0.9; // Reguliert die Belichtung vor dem Tone Mapping (Standard 1.0, niedriger = dezenter)
-    // --- ENDE FARBEN ANPASSEN ---
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.9;
 
-    // Beleuchtung (wieder heller gestellt)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Wieder auf 0.7
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Wieder auf 0.8
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
     directionalLight.position.set(5, 5, 5).normalize();
     scene.add(directionalLight);
 
-    // Kamera-Position (Anfangsbetrachtung)
     camera.position.set(0, 1.5, 6);
 
-    // OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = .25;
 
-    // Kamerasteuerung: Drehen, nicht bewegen, Zoomen, Blick unter die Mikrowelle
-    controls.enablePan = false; // Deaktiviert das Verschieben der Kamera
-    controls.enableZoom = true; // Ermöglicht das Zoomen
-    controls.minPolarAngle = 0; // Erlaubt Blick nach oben
-    controls.maxPolarAngle = Math.PI * 1; // Erlaubt Blick nach unten (ca. 180 Grad, direkter Blick nach unten)
-
-    // Den Mittelpunkt, auf den die Kamera schaut, höher setzen (anpassen, wenn nötig)
+    controls.enablePan = false;
+    controls.enableZoom = true;
+    controls.minPolarAngle = 0;
+    controls.maxPolarAngle = Math.PI * 1;
     controls.target.set(0, 1.5, 0); 
     controls.update(); 
 
-    // Raycasting-Variablen
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
-    // Variablen für 3D-Modell und Animation
     let microwaveModel;
     let mixer;
     let clock = new THREE.Clock();
     let doorAction;
-    let isDoorOpen = false; // True = Tür offen, False = Tür geschlossen (initial geschlossen)
-    let isAnimating = false; // Ist eine Three.js Animation aktiv?
+    let isDoorOpen = false;
+    let isAnimating = false;
 
-    // Globale Variable für den Zustand des Mikrowellenprozesses
-    let processRunning = false; // Ist der 10-Sekunden-Prozess aktiv?
+    let processRunning = false;
     let processAbortController = null;
 
     const doorAnimationName = "DoorOpenCloseAnimation";
@@ -86,11 +73,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let timerModelPart;
     let timerAction;
 
-    // Variablen für dynamische Feuer-Partikel
     let fireParticlesGroup; 
     let microwaveFireTemplate; 
     
-    // Fester Bereich für die Partikelgenerierung (Anpassen an den Innenraum deiner Mikrowelle!)
     const particleSpawnArea = {
         minX: -2,   
         maxX: 0.8,  
@@ -99,25 +84,51 @@ document.addEventListener('DOMContentLoaded', () => {
         maxZ: 0.7   
     };
 
-    const particleCount = 100; // Anzahl der Partikel
+    const particleCount = 100;
     const particleMaxHeight = 2.0; 
     const particleMinLife = 1.0; 
     const particleMaxLife = 3.0; 
     const fireParticles = []; 
     const particleInitialScale = 1.0; 
 
-    // Item-Verwaltung
     let currentLoadedItem = null;
     let currentItemType = null;
-    let currentItemVersion = 1; // Neue Variable zur Speicherung der aktuellen Item-Version (initial 1)
+    let currentItemVersion = 1; 
     const itemLoader = new GLTFLoader();
-    // Passe diese Position an, damit die Items in deiner Mikrowelle richtig liegen
-    const itemPosition = new THREE.Vector3(-0.5, 0.45, 0); // Neue Item-Position
+    const itemPosition = new THREE.Vector3(-0.5, 0.45, 0);
 
-    // Initialisiere den Zustand der HTML-Buttons
+    const world = new CANNON.World({
+        gravity: new CANNON.Vec3(0, -9.82, 0)
+    });
+    
+    const rubberDucks = []; 
+
+    const groundBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
+    groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+    groundBody.position.y = 0.5; 
+    world.addBody(groundBody);
+    
+    const physicsWalls = [];
+    const backWallBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), position: new CANNON.Vec3(0, 0, particleSpawnArea.minZ) });
+    backWallBody.quaternion.setFromEuler(0, 0, 0);
+    physicsWalls.push(backWallBody);
+    const leftWallBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), position: new CANNON.Vec3(particleSpawnArea.minX, 0, 0) });
+    leftWallBody.quaternion.setFromEuler(0, Math.PI / 2, 0);
+    physicsWalls.push(leftWallBody);
+    const rightWallBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), position: new CANNON.Vec3(particleSpawnArea.maxX, 0, 0) });
+    rightWallBody.quaternion.setFromEuler(0, -Math.PI / 2, 0);
+    physicsWalls.push(rightWallBody);
+    const ceilingBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), position: new CANNON.Vec3(0, 2.0, 0) });
+    ceilingBody.quaternion.setFromEuler(Math.PI / 2, 0, 0);
+    physicsWalls.push(ceilingBody);
+
+    const frontWallBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), position: new CANNON.Vec3(0, 0, particleSpawnArea.maxZ) });
+    frontWallBody.quaternion.setFromEuler(0, Math.PI, 0); 
+    
+    togglePhysicsWalls(true);
+
     itemButtons.forEach(btn => btn.disabled = true); 
 
-    // GLTF-Loader für Mikrowelle
     const loader = new GLTFLoader();
     loader.load(
         'models/microwave_model.glb',
@@ -171,11 +182,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 timerAction.stop();
                 console.log(`[INIT] Animation "${timerAnimationName}" für den Timer initialisiert und pausiert.`);
             } else {
-                console.warn(`[INIT] Animation "${timerAnimationName}" wurde im GLB-Modell NICHT gefunden.`);
+                console.warn(`[INIT] Animation "${timerAnimationName}" konnte nicht gefunden werden.`);
                 alert(`Die Timer-Animation "${timerAnimationName}" konnte nicht gefunden werden. Bitte überprüfe den Namen in Blender.`);
             }
 
-            // Bereich für dynamische Feuer-Partikel (Klonen) START
             microwaveFireTemplate = microwaveModel.getObjectByName('microwave_fire');
             if (microwaveFireTemplate) {
                 console.log('[INIT] "microwave_fire" Template-Objekt gefunden!');
@@ -208,7 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
             fireParticlesGroup.visible = false; 
 
             createFireParticles(); 
-            // ENDE Bereich für dynamische Feuer-Partikel
 
             animate();
         },
@@ -221,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     );
 
-    // Funktion: Erstellt die geklonten "microwave_fire" Objekte
     function createFireParticles() {
         if (!microwaveFireTemplate) {
             console.warn('[PARTIKEL] Template fehlt. Partikel können nicht erstellt werden.');
@@ -279,20 +287,18 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`[PARTIKEL] ${particleCount} "microwave_fire" Partikel geklont und erstellt.`);
     }
 
-    // Klick-Event-Listener für Maus und Touch
     canvas.addEventListener('click', onCanvasInteraction);
     canvas.addEventListener('touchstart', (event) => {
         onCanvasInteraction(event);
     }, { passive: false });
 
-    // Event Listener für die Item-Buttons
     itemButtons.forEach(button => {
         button.addEventListener('click', (event) => {
             const itemType = event.currentTarget.dataset.item; 
             console.log(`[HTML BUTTON] Item-Button "${itemType}" geklickt. Zustände: isAnimating=${isAnimating}, processRunning=${processRunning}, isDoorOpen=${isDoorOpen}`);
 
             if (!processRunning && !isAnimating && isDoorOpen) { 
-                loadItem(itemType, 1); // Lade immer Version 1, wenn der Button geklickt wird
+                loadItem(itemType, 1);
             } else {
                 if (!isDoorOpen) {
                     console.log('[ITEM BUTTON] Item kann nicht platziert werden: Tür ist geschlossen.');
@@ -305,26 +311,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // loadItem Funktion angepasst, um eine spezifische Version zu laden
     function loadItem(itemType, version) {
         console.log(`[ITEM LADEN] Versuche Item "${itemType}" Version ${version} zu laden.`);
-        if (currentLoadedItem) {
-            console.log('[ITEM LADEN] Entferne vorheriges Item.');
-            scene.remove(currentLoadedItem);
-            currentLoadedItem = null;
-        }
+        removeItem();
 
         const modelPath = `models/${itemType}_v${version}.glb`;
         console.log(`[ITEM LADEN] Lade: ${modelPath}`);
         itemLoader.load(
             modelPath,
             (gltf) => {
-                currentLoadedItem = gltf.scene;
-                currentLoadedItem.position.copy(itemPosition); 
-                scene.add(currentLoadedItem);
                 currentItemType = itemType; 
-                currentItemVersion = version; // Aktualisiere die aktuelle Version des Items
-                console.log(`[ITEM LADEN] Item "${itemType}" Version ${version} erfolgreich geladen und platziert.`);
+                currentItemVersion = version;
+
+                if (currentItemType === 'rubber_duck') {
+                    const duckMesh = gltf.scene;
+                    const duckSpawnPosition = new THREE.Vector3(itemPosition.x, itemPosition.y + 1.0, itemPosition.z);
+                    addPhysicsToDuck(duckMesh, duckSpawnPosition);
+                    console.log(`[ITEM LADEN] Erste Gummiente erfolgreich geladen und mit Physik versehen.`);
+                } else if (currentItemType === 'ice') {
+                    currentLoadedItem = gltf.scene;
+                    currentLoadedItem.position.copy(itemPosition); 
+                    scene.add(currentLoadedItem);
+                    console.log(`[ITEM LADEN] Ice Item erfolgreich geladen und platziert.`);
+                } else {
+                    currentLoadedItem = gltf.scene;
+                    currentLoadedItem.position.copy(itemPosition); 
+                    scene.add(currentLoadedItem);
+                    console.log(`[ITEM LADEN] Item "${itemType}" Version ${version} erfolgreich geladen und platziert.`);
+                }
             },
             (xhr) => {
                 console.log(`[ITEM LADE FORTSCHRITT] Item ${itemType} v${version}: ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`);
@@ -335,62 +349,105 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         );
     }
+    
+    function addPhysicsToDuck(duckMesh, position, impulse = null) {
+        duckMesh.position.copy(position);
+        scene.add(duckMesh);
+        
+        const duckShape = new CANNON.Box(new CANNON.Vec3(0.15, 0.15, 0.15));
+        const duckBody = new CANNON.Body({
+            mass: 0.5,
+            shape: duckShape,
+            position: new CANNON.Vec3(position.x, position.y, position.z),
+        });
+        
+        if (impulse) {
+            duckBody.velocity.set(impulse.x, impulse.y, impulse.z);
+        } else {
+            duckBody.velocity.set(0, 0, 0); 
+        }
+        
+        world.addBody(duckBody);
+        duckMesh.cannonBody = duckBody;
+        rubberDucks.push(duckMesh);
+    }
 
-    // Funktion angepasst, um von V2 auf V3 zu wechseln
     function replaceItemWithCookedVersion() {
         console.log(`[REPLACE ITEM] Starting for currentItemType: ${currentItemType}, currentLoadedItem present: ${!!currentLoadedItem}, currentItemVersion: ${currentItemVersion}`);
 
-        if (!currentItemType || !currentLoadedItem) {
+        if (!currentItemType) {
             console.log('[KOCHEN] Kein Item geladen, um es zu kochen. Überspringe Ersetzen.');
             return;
         }
 
-        let nextVersion = currentItemVersion + 1; // Erhöhe die Version um 1
+        if (currentItemType === 'rubber_duck') {
+            const ducksToDuplicate = [...rubberDucks];
+            const originalDuckMesh = ducksToDuplicate[0]; 
 
-        // Stelle sicher, dass du nicht über die maximale Version hinausgehst (hier 3)
-        // Du kannst dies anpassen, wenn du mehr Versionen hast.
-        if (nextVersion > 3) { 
-            console.log(`[REPLACE ITEM] Item "${currentItemType}" ist bereits auf der höchsten Version (V${currentItemVersion}). Kein weiteres Kochen möglich.`);
-            return;
-        }
+            ducksToDuplicate.forEach(duck => {
+                const newDuck = originalDuckMesh.clone();
+                const newPosition = duck.position.clone().add(new THREE.Vector3(Math.random() * 0.2 - 0.1, 0.5, Math.random() * 0.2 - 0.1));
+                const newImpulse = new CANNON.Vec3(Math.random() * 20 - 10, 15, Math.random() * 20 - 10);
+                addPhysicsToDuck(newDuck, newPosition, newImpulse);
+            });
+            console.log(`[GUMMIENTE] ${ducksToDuplicate.length} Enten geklont. Die aktuelle Anzahl beträgt ${rubberDucks.length}.`);
 
-        console.log(`[KOCHEN] Ersetze Item "${currentItemType}" Version ${currentItemVersion} durch Version ${nextVersion}.`);
-        
-        scene.remove(currentLoadedItem); 
-        currentLoadedItem = null; // Setzt es temporär auf null, bevor das neue geladen wird
+        } else {
+            let nextVersion = currentItemVersion + 1;
 
-        const cookedModelPath = `models/${currentItemType}_v${nextVersion}.glb`;
-        console.log(`[KOCHEN] Lade gekochtes Item: ${cookedModelPath}`);
-        itemLoader.load(
-            cookedModelPath,
-            (gltf) => {
-                currentLoadedItem = gltf.scene; 
-                currentLoadedItem.position.copy(itemPosition);
-                scene.add(currentLoadedItem); 
-                currentItemVersion = nextVersion; // Aktualisiere die Versionsnummer nach dem Laden
-                console.log(`[KOCHEN] Item "${currentItemType}" erfolgreich auf "v${currentItemVersion}" gewechselt.`);
-            },
-            (xhr) => {
-                console.log(`[KOCHEN LADE FORTSCHRITT] Gekochtes Item ${currentItemType} v${nextVersion}: ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`);
-            },
-            (error) => {
-                console.error(`[REPLACE ITEM ERROR] Fehler beim Laden der gekochten Version von Item "${currentItemType}" v${nextVersion} (${cookedModelPath}):`, error); 
-                alert(`Fehler beim Laden der gekochten Version von Item "${currentItemType}". Überprüfen Sie die Datei und den Pfad in "models/${currentItemType}_v${nextVersion}.glb".`);
+            if (nextVersion > 3) {
+                console.log(`[REPLACE ITEM] Item "${currentItemType}" ist bereits auf der höchsten Version (V${currentItemVersion}). Kein weiteres Kochen möglich.`);
+                return;
             }
-        );
+
+            console.log(`[KOCHEN] Ersetze Item "${currentItemType}" Version ${currentItemVersion} durch Version ${nextVersion}.`);
+            
+            scene.remove(currentLoadedItem); 
+            currentLoadedItem = null; 
+
+            const cookedModelPath = `models/${currentItemType}_v${nextVersion}.glb`;
+            console.log(`[KOCHEN] Lade gekochtes Item: ${cookedModelPath}`);
+            itemLoader.load(
+                cookedModelPath,
+                (gltf) => {
+                    currentLoadedItem = gltf.scene; 
+                    currentLoadedItem.position.copy(itemPosition);
+                    scene.add(currentLoadedItem); 
+                    currentItemVersion = nextVersion;
+                    console.log(`[KOCHEN] Item "${currentItemType}" erfolgreich auf "v${currentItemVersion}" gewechselt.`);
+                },
+                (xhr) => {
+                    console.log(`[KOCHEN LADE FORTSCHRITT] Gekochtes Item ${currentItemType} v${nextVersion}: ${(xhr.loaded / xhr.total * 100).toFixed(2)}% geladen`);
+                },
+                (error) => {
+                    console.error(`[REPLACE ITEM ERROR] Fehler beim Laden der gekochten Version von Item "${currentItemType}" v${nextVersion} (${cookedModelPath}):`, error); 
+                    alert(`Fehler beim Laden der gekochten Version von Item "${currentItemType}". Überprüfen Sie die Datei und den Pfad in "models/${currentItemType}_v${nextVersion}.glb".`);
+                }
+            );
+        }
     }
 
     function removeItem() {
-        if (currentLoadedItem) {
+        if (currentItemType === 'rubber_duck') {
+            rubberDucks.forEach(duck => {
+                world.removeBody(duck.cannonBody);
+                scene.remove(duck);
+            });
+            rubberDucks.length = 0; 
+            currentLoadedItem = null;
+            currentItemType = null;
+            console.log('[ITEM] Alle Gummienten aus der Mikrowelle entfernt.');
+        } else if (currentLoadedItem) {
             console.log(`[REMOVE ITEM] Entferne Item:`, currentLoadedItem);
             scene.remove(currentLoadedItem);
             currentLoadedItem = null;
             currentItemType = null; 
-            currentItemVersion = 1; // Setze die Version zurück, wenn Item entfernt wird
+            currentItemVersion = 1;
             console.log('[ITEM] Item aus Mikrowelle entfernt.');
         } else {
             console.log('[ITEM] Keine Item zum Entfernen gefunden.');
         }
+        updateButtonStates();
     }
 
     function onCanvasInteraction(event) {
@@ -443,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (processRunning) console.log('[RAYCAST] Prozess läuft, kann Tür nicht manuell öffnen/schließen.');
                 }
             } else if (firstHitObject.name === startButtonName) {
-                console.log(`[RAYCAST] Start-Button geklickt. Zustände: isAnimating=${isAnimating}, processRunning=${processRunning}, isDoorOpen=${isDoorOpen}, currentLoadedItem=${!!currentLoadedItem}`);
+                console.log(`[RAYCAST] Start-Button geklickt. Zustände: isAnimating=${isAnimating}, processRunning=${processRunning}, isDoorOpen=${isDoorOpen}, currentLoadedItem=${!!currentLoadedItem || rubberDucks.length > 0}`);
                 if (!isAnimating && !processRunning) { 
                     console.log('[RAYCAST] Starte Mikrowellen-Prozess!');
                     closeDoorAndOpenAfterDelay(); 
@@ -469,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        if (!currentLoadedItem) {
+        if (!currentLoadedItem && rubberDucks.length === 0) {
             console.log('[PROZESS] Kein Item in der Mikrowelle gefunden. Der Mikrowellenzyklus läuft trotzdem ab.');
         }
 
@@ -488,20 +545,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('[PROZESS] Tür ist bereits geschlossen (isDoorOpen=false).'); 
             }
 
-            // Bereich für dynamische Feuer-Partikel START
+            togglePhysicsWalls(true);
+
             if (fireParticlesGroup) {
                 fireParticlesGroup.visible = true; 
                 console.log('[PROZESS] Geklonte "microwave_fire" Partikel sichtbar gemacht.');
             }
-            // ENDE Bereich für dynamische Feuer-Partikel
 
-            // Rotes Licht-Objekt einschalten
             if (redLightModelPart) {
                  redLightModelPart.visible = true;
                  console.log('[PROZESS] Rotes Licht (Modell-Teil) an.');
             }
 
-            // Timer-Animation starten
             if (timerAction) {
                 timerAction.reset();
                 timerAction.play();
@@ -521,8 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             console.log(`[PROZESS] ${delayInSeconds} Sekunden vorbei.`);
-            // Hier wird replaceItemWithCookedVersion() aufgerufen, die nun die nächste Version lädt
-            if (currentLoadedItem) { 
+            if (currentLoadedItem || rubberDucks.length > 0) { 
                 replaceItemWithCookedVersion();
             } else {
                 console.log('[PROZESS] Kein Item geladen, daher kein Austausch auf nächste Version.');
@@ -546,20 +600,18 @@ document.addEventListener('DOMContentLoaded', () => {
             processRunning = false;
             processAbortController = null;
 
-            // Bereich für dynamische Feuer-Partikel STOP
+            togglePhysicsWalls(false);
+
             if (fireParticlesGroup) {
                 fireParticlesGroup.visible = false; 
                 console.log('[PROZESS] Geklonte "microwave_fire" Partikel ausgeblendet.');
             }
-            // ENDE Bereich für dynamische Feuer-Partikel
 
-            // Rotes Licht-Objekt ausschalten
             if (redLightModelPart) {
                 redLightModelPart.visible = false;
                 console.log('[PROZESS] Rotes Licht (Modell-Teil) aus.');
             }
 
-            // Timer-Animation stoppen und zurücksetzen
             if (timerAction) {
                 timerAction.stop();
                 timerAction.reset();
@@ -594,6 +646,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function togglePhysicsWalls(active) {
+        if (active) {
+            if (physicsWalls.some(wall => !world.bodies.includes(wall))) {
+                physicsWalls.forEach(wall => world.addBody(wall));
+                console.log('[PHYSIK-WÄNDE] Physik-Wände der Mikrowelle aktiviert.');
+            }
+        } else {
+            if (physicsWalls.some(wall => world.bodies.includes(wall))) {
+                physicsWalls.forEach(wall => world.removeBody(wall));
+                console.log('[PHYSIK-WÄNDE] Physik-Wände der Mikrowelle deaktiviert.');
+            }
+        }
+    }
+
     function waitForAnimationEnd() {
         return new Promise(resolve => {
             const onFinished = (e) => {
@@ -622,12 +688,19 @@ document.addEventListener('DOMContentLoaded', () => {
             doorAction.time = doorAction.getClip().duration; 
             doorAction.play();
             console.log('[TÜR ANIMATION] Tür schließt sich...');
+
+            world.addBody(frontWallBody); 
+            console.log('[PHYSIK] Vordere Wand hinzugefügt.');
+
         } else { 
             doorAction.timeScale = 1; 
             doorAction.paused = false;
             doorAction.time = 0; 
             doorAction.play();
             console.log('[TÜR ANIMATION] Tür öffnet sich...');
+
+            world.removeBody(frontWallBody); 
+            console.log('[PHYSIK] Vordere Wand entfernt.');
         }
 
         mixer.addEventListener('finished', onAnimationFinished);
@@ -647,15 +720,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateButtonStates() {
-        console.log(`[BUTTON UPDATE] Aktualisiere Button-Zustände. isAnimating=${isAnimating}, processRunning=${processRunning}, isDoorOpen=${isDoorOpen}, currentLoadedItem=${!!currentLoadedItem}`); 
+        console.log(`[BUTTON UPDATE] Aktualisiere Button-Zustände. isAnimating=${isAnimating}, processRunning=${processRunning}, isDoorOpen=${isDoorOpen}, currentLoadedItem=${!!currentLoadedItem || rubberDucks.length > 0}`); 
 
+        const hasItem = !!currentLoadedItem || rubberDucks.length > 0;
         itemButtons.forEach(btn => {
-            btn.disabled = isAnimating || processRunning || !isDoorOpen; 
-            console.log(`[BUTTON UPDATE] Item Button (${btn.dataset.item}).disabled = ${btn.disabled} (Basierend auf isDoorOpen=${isDoorOpen})`); 
+            btn.disabled = isAnimating || processRunning || hasItem;
+
+            if (hasItem && btn.dataset.item !== currentItemType && currentItemType !== 'rubber_duck') {
+                 btn.disabled = true;
+            } else if (currentItemType === 'rubber_duck' && rubberDucks.length > 0) {
+                 if (btn.dataset.item !== 'rubber_duck') {
+                    btn.disabled = true;
+                 }
+            } else if (!hasItem) {
+                 btn.disabled = isAnimating || processRunning;
+            }
         });
     }
 
-    // Animations-Loop
     function animate() {
         requestAnimationFrame(animate);
 
@@ -664,7 +746,14 @@ document.addEventListener('DOMContentLoaded', () => {
             mixer.update(delta);
         }
 
-        // Bereich für dynamische Feuer-Partikel Animation START
+        world.step(1/60);
+        rubberDucks.forEach(duck => {
+            if (duck.cannonBody) {
+                duck.position.copy(duck.cannonBody.position);
+                duck.quaternion.copy(duck.cannonBody.quaternion);
+            }
+        });
+        
         if (fireParticlesGroup && fireParticlesGroup.visible) { 
             fireParticles.forEach(particle => {
                 particle._currentAge += delta; 
@@ -692,14 +781,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 particle.position.z += Math.cos(particle._currentAge * speed * 0.8 + particle.id) * fluctuation * delta;
             });
         }
-        // ENDE Bereich für dynamische Feuer-Partikel Animation
 
         controls.update();
 
         renderer.render(scene, camera);
     }
 
-    // Responsivität des Canvas
     window.addEventListener('resize', () => {
         camera.aspect = canvas.clientWidth / canvas.clientHeight;
         camera.updateProjectionMatrix();
