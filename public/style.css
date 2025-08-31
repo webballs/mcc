@@ -91,7 +91,7 @@ h1 {
     background-color: #34495e;
     padding: 25px;
     border-radius: 15px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
     display: flex;
     flex-direction: column;
     gap: 20px;
