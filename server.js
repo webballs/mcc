@@ -28,11 +28,35 @@ app.get('/', (req, res) => {
 
 // Dynamische Berechnung der Upgrade-Werte
 function getUpgradeCost(level) {
-    return 10 * Math.pow(2, level);
+    return 10 + (level * 20); // Kosten steigen in 20er-Schritten
 }
 function getClickValue(level) {
-    return Math.pow(2, level + 1);
+    return 1 + level; // Klickwert erhöht sich um 1 pro Level
 }
+
+// --- NEUER API-ENDPUNKT ZUM ZURÜCKSETZEN ---
+app.get('/reset', async (req, res) => {
+    const RESET_KEY = process.env.RESET_KEY || 'reset'; // Ändere das Passwort hier
+    
+    if (req.query.key === RESET_KEY) {
+        try {
+            await redis.set(COUNTER_KEY, 0);
+            await redis.set(UPGRADE_LEVEL_KEY, 0);
+            await redis.set(CLICK_VALUE_KEY, 1);
+            io.emit('update-counter', 0);
+            io.emit('update-upgrade', { level: 0, nextCost: getUpgradeCost(0) });
+            io.emit('update-click-value', 1);
+            res.send('Spiel erfolgreich zurückgesetzt!');
+            console.log('Spiel wurde über den API-Endpunkt zurückgesetzt.');
+        } catch (error) {
+            console.error('Fehler beim Zurücksetzen des Spiels:', error);
+            res.status(500).send('Fehler beim Zurücksetzen des Spiels.');
+        }
+    } else {
+        res.status(403).send('Zugriff verweigert.');
+    }
+});
+// --- ENDE DES NEUEN CODES ---
 
 io.on('connection', async (socket) => {
     console.log('Ein Benutzer hat sich verbunden');

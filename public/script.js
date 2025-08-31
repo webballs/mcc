@@ -30,7 +30,7 @@ socket.on('update-upgrade', (data) => {
     upgradeLevelSpan.textContent = data.level;
     upgradeCostSpan.textContent = data.nextCost;
     upgradeButton.textContent = `Upgrade Kaufen (${data.nextCost} Cookies)`;
-    upgradeButton.disabled = false; // Button immer aktivieren, da es kein Max-Level gibt
+    upgradeButton.disabled = false;
 });
 
 socket.on('error-message', (message) => {
