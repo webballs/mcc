@@ -8,17 +8,23 @@
 </head>
 <body>
 
-    <div class="container">
-        <h1>Multiplayer Cookie Clicker</h1>
-        <div class="score-display">
-            <span id="click-count">0</span> Cookies
+    <div class="game-area"> <div class="main-content">
+            <h1>Multiplayer Cookie Clicker</h1>
+            <div class="score-display">
+                <span id="click-count">0</span> Cookies
+            </div>
+            <img src="cookie.png" id="cookie" alt="Klicke auf den Cookie">
         </div>
-        <img src="cookie.png" id="cookie" alt="Klicke auf den Cookie">
 
         <div class="info-panel">
-            <p>Dein Klickwert: <span id="click-value">1</span></p>
-            <p>Nächstes Upgrade: Level <span id="upgrade-level">1</span> (Kosten: <span id="upgrade-cost">10</span> Cookies)</p>
-            <button id="upgrade-button">Upgrade Kaufen</button>
+            <h2>Upgrades</h2>
+            <div class="upgrade-item">
+                <p class="upgrade-title">Klickkraft verbessern</p>
+                <p>Dein Klickwert: <span id="click-value">1</span></p>
+                <p class="upgrade-details">Nächstes Upgrade: Level <span id="upgrade-level">1</span></p>
+                <p class="upgrade-cost">Kosten: <span id="upgrade-cost">10</span> Cookies</p>
+                <button id="upgrade-button" class="action-button">Upgrade Kaufen</button>
+            </div>
         </div>
     </div>
 
