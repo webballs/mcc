@@ -1,19 +1,45 @@
 const socket = io();
 const cookie = document.getElementById('cookie');
 const clickCountSpan = document.getElementById('click-count');
+const clickValueSpan = document.getElementById('click-value');
+const upgradeLevelSpan = document.getElementById('upgrade-level');
+const upgradeCostSpan = document.getElementById('upgrade-cost');
+const upgradeButton = document.getElementById('upgrade-button');
 
+// Klick-Logik
 cookie.addEventListener('click', (event) => {
     socket.emit('click');
     createClickEffect();
-    createRedSquareEffect(event);
-    cookie.classList.add('rotate');
-    cookie.addEventListener('animationend', () => {
-        cookie.classList.remove('rotate');
-    }, { once: true });
 });
 
+// Upgrade-Logik
+upgradeButton.addEventListener('click', () => {
+    socket.emit('buy-upgrade');
+});
+
+// Server-Antworten
 socket.on('update-counter', (count) => {
     clickCountSpan.textContent = count;
+});
+
+socket.on('update-click-value', (value) => {
+    clickValueSpan.textContent = value;
+});
+
+socket.on('update-upgrade', (level) => {
+    const nextLevel = level + 1;
+    const upgradeCosts = [10, 100, 1000, 10000];
+    const nextCost = upgradeCosts[level];
+
+    if (nextCost) {
+        upgradeLevelSpan.textContent = nextLevel;
+        upgradeCostSpan.textContent = nextCost;
+        upgradeButton.style.display = 'block';
+    } else {
+        upgradeLevelSpan.textContent = 'Max';
+        upgradeCostSpan.textContent = 'N/A';
+        upgradeButton.style.display = 'none'; // Versteckt den Button, wenn es keine Upgrades mehr gibt
+    }
 });
 
 socket.on('error-message', (message) => {
@@ -21,10 +47,11 @@ socket.on('error-message', (message) => {
     alert('Es gab einen Fehler: ' + message);
 });
 
+// Visuelle Effekte
 function createClickEffect() {
     const effect = document.createElement('div');
     effect.classList.add('click-effect');
-    effect.textContent = '+1';
+    effect.textContent = `+${clickValueSpan.textContent}`; // Zeigt den aktuellen Klickwert an
 
     const cookieRect = cookie.getBoundingClientRect();
     effect.style.left = `${cookieRect.left + cookieRect.width / 2}px`;
@@ -36,19 +63,4 @@ function createClickEffect() {
     effect.addEventListener('animationend', () => {
         effect.remove();
     });
-}
-
-function createRedSquareEffect(event) {
-    const square = document.createElement('div');
-    square.classList.add('red-square');
-
-    square.style.left = `${event.clientX}px`;
-    square.style.top = `${event.clientY}px`;
-    square.style.transform = `translate(-50%, -50%)`;
-
-    document.body.appendChild(square);
-
-    square.addEventListener('animationend', () => {
-        square.remove();
-    }, { once: true });
 }
