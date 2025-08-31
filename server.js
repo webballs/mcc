@@ -19,10 +19,6 @@ const COUNTER_KEY = 'global_cookie_clicks';
 const UPGRADE_LEVEL_KEY = 'global_upgrade_level';
 const CLICK_VALUE_KEY = 'global_click_value';
 
-// Upgrade-Kosten und -Werte
-const UPGRADE_COSTS = [0, 10, 100, 1000, 10000]; // Beispiel-Kosten für Level 0, 1, 2...
-const UPGRADE_VALUES = [1, 2, 5, 10, 50]; // Beispiel-Klickwerte für Level 0, 1, 2...
-
 // Statische Dateien aus dem 'public'-Ordner servieren
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -30,14 +26,26 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'cookie-clicker.html'));
 });
 
+// Dynamische Berechnung der Upgrade-Werte
+function getUpgradeCost(level) {
+    return 10 * Math.pow(2, level);
+}
+function getClickValue(level) {
+    return Math.pow(2, level + 1);
+}
+
 io.on('connection', async (socket) => {
     console.log('Ein Benutzer hat sich verbunden');
 
     try {
-        const [currentCount, upgradeLevel, clickValue] = await redis.mget(COUNTER_KEY, UPGRADE_LEVEL_KEY, CLICK_VALUE_KEY);
+        const [currentCount, upgradeLevel] = await redis.mget(COUNTER_KEY, UPGRADE_LEVEL_KEY);
+        const level = parseInt(upgradeLevel || '0', 10);
+        const clickValue = getClickValue(level);
+        const nextCost = getUpgradeCost(level);
+
         socket.emit('update-counter', parseInt(currentCount || '0', 10));
-        socket.emit('update-upgrade', parseInt(upgradeLevel || '0', 10));
-        socket.emit('update-click-value', parseInt(clickValue || '1', 10));
+        socket.emit('update-upgrade', { level: level, nextCost: nextCost });
+        socket.emit('update-click-value', clickValue);
     } catch (error) {
         console.error('Fehler beim Laden des Spielstatus von Redis:', error);
         socket.emit('error-message', 'Fehler beim Laden des Spiels.');
@@ -59,24 +67,24 @@ io.on('connection', async (socket) => {
     socket.on('buy-upgrade', async () => {
         try {
             const [currentCount, currentLevel] = await redis.mget(COUNTER_KEY, UPGRADE_LEVEL_KEY);
-            const nextLevel = parseInt(currentLevel || '0', 10) + 1;
+            const level = parseInt(currentLevel || '0', 10);
+            const cost = getUpgradeCost(level);
 
-            if (nextLevel < UPGRADE_COSTS.length) {
-                const cost = UPGRADE_COSTS[nextLevel];
-                if (parseInt(currentCount) >= cost) {
-                    await redis.decrby(COUNTER_KEY, cost);
-                    await redis.incr(UPGRADE_LEVEL_KEY);
-                    await redis.set(CLICK_VALUE_KEY, UPGRADE_VALUES[nextLevel]);
+            if (parseInt(currentCount) >= cost) {
+                const newLevel = level + 1;
+                const newClickValue = getClickValue(newLevel);
+                const nextCost = getUpgradeCost(newLevel);
 
-                    const newCount = await redis.get(COUNTER_KEY);
-                    io.emit('update-counter', parseInt(newCount, 10));
-                    io.emit('update-upgrade', nextLevel);
-                    io.emit('update-click-value', UPGRADE_VALUES[nextLevel]);
-                } else {
-                    socket.emit('error-message', 'Nicht genug Cookies für das Upgrade!');
-                }
+                await redis.decrby(COUNTER_KEY, cost);
+                await redis.incr(UPGRADE_LEVEL_KEY);
+                await redis.set(CLICK_VALUE_KEY, newClickValue);
+
+                const newCount = await redis.get(COUNTER_KEY);
+                io.emit('update-counter', parseInt(newCount, 10));
+                io.emit('update-upgrade', { level: newLevel, nextCost: nextCost });
+                io.emit('update-click-value', newClickValue);
             } else {
-                socket.emit('error-message', 'Keine weiteren Upgrades verfügbar!');
+                socket.emit('error-message', 'Nicht genug Cookies für das Upgrade!');
             }
         } catch (error) {
             console.error('Fehler beim Kauf des Upgrades:', error);
@@ -101,7 +109,7 @@ async function initializeKeys() {
         const [counterExists, levelExists, valueExists] = await redis.exists(COUNTER_KEY, UPGRADE_LEVEL_KEY, CLICK_VALUE_KEY);
         if (!counterExists) await redis.set(COUNTER_KEY, 0);
         if (!levelExists) await redis.set(UPGRADE_LEVEL_KEY, 0);
-        if (!valueExists) await redis.set(CLICK_VALUE_KEY, UPGRADE_VALUES[0]);
+        if (!valueExists) await redis.set(CLICK_VALUE_KEY, 1); // Startwert für Klick = 1
 
         console.log(`Spielstatus in Redis initialisiert.`);
     } catch (error) {
