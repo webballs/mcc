@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Redis-Client initialisieren
+// Initialize Redis client
 const redis = new Redis({
     host: process.env.REDIS_HOST || 'localhost',
     port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : 6379,
@@ -19,24 +19,26 @@ const COUNTER_KEY = 'global_cookie_clicks';
 const UPGRADE_LEVEL_KEY = 'global_upgrade_level';
 const CLICK_VALUE_KEY = 'global_click_value';
 
-// Statische Dateien aus dem 'public'-Ordner servieren
+// Serve static files from the 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'cookie-clicker.html'));
 });
 
-// Dynamische Berechnung der Upgrade-Werte
+// Dynamic calculation of upgrade values
 function getUpgradeCost(level) {
-    return 10 + (level * 20); // Kosten steigen in 20er-Schritten
+    // Base cost 10, growth factor 2.0 (200% per level)
+    return Math.floor(10 * Math.pow(2.0, level));
 }
 function getClickValue(level) {
-    return 1 + level; // Klickwert erhöht sich um 1 pro Level
+    // Click value increases based on the square root of the level
+    return 1 + Math.floor(Math.sqrt(level));
 }
 
-// --- NEUER API-ENDPUNKT ZUM ZURÜCKSETZEN ---
+// API endpoint to reset the game
 app.get('/reset', async (req, res) => {
-    const RESET_KEY = process.env.RESET_KEY || 'reset'; // Ändere das Passwort hier
+    const RESET_KEY = process.env.RESET_KEY || 'DEIN_SUPER_GEHEIMES_PASSWORT';
     
     if (req.query.key === RESET_KEY) {
         try {
@@ -46,20 +48,19 @@ app.get('/reset', async (req, res) => {
             io.emit('update-counter', 0);
             io.emit('update-upgrade', { level: 0, nextCost: getUpgradeCost(0) });
             io.emit('update-click-value', 1);
-            res.send('Spiel erfolgreich zurückgesetzt!');
-            console.log('Spiel wurde über den API-Endpunkt zurückgesetzt.');
+            res.send('Game successfully reset!');
+            console.log('Game was reset via the API endpoint.');
         } catch (error) {
-            console.error('Fehler beim Zurücksetzen des Spiels:', error);
-            res.status(500).send('Fehler beim Zurücksetzen des Spiels.');
+            console.error('Error resetting the game:', error);
+            res.status(500).send('Error resetting the game.');
         }
     } else {
-        res.status(403).send('Zugriff verweigert.');
+        res.status(403).send('Access denied.');
     }
 });
-// --- ENDE DES NEUEN CODES ---
 
 io.on('connection', async (socket) => {
-    console.log('Ein Benutzer hat sich verbunden');
+    console.log('A user connected');
 
     try {
         const [currentCount, upgradeLevel] = await redis.mget(COUNTER_KEY, UPGRADE_LEVEL_KEY);
@@ -71,23 +72,23 @@ io.on('connection', async (socket) => {
         socket.emit('update-upgrade', { level: level, nextCost: nextCost });
         socket.emit('update-click-value', clickValue);
     } catch (error) {
-        console.error('Fehler beim Laden des Spielstatus von Redis:', error);
-        socket.emit('error-message', 'Fehler beim Laden des Spiels.');
+        console.error('Error loading game state from Redis:', error);
+        socket.emit('error-message', 'Error loading the game.');
     }
 
-    // Beim Klick
+    // On click
     socket.on('click', async () => {
         try {
             const clickValue = parseInt(await redis.get(CLICK_VALUE_KEY) || '1', 10);
             const newCount = await redis.incrby(COUNTER_KEY, clickValue);
             io.emit('update-counter', newCount);
         } catch (error) {
-            console.error('Fehler beim Inkrementieren des Zählers in Redis:', error);
-            socket.emit('error-message', 'Fehler beim Klick.');
+            console.error('Error incrementing counter in Redis:', error);
+            socket.emit('error-message', 'Error during click.');
         }
     });
 
-    // Beim Upgrade-Kauf
+    // On upgrade purchase
     socket.on('buy-upgrade', async () => {
         try {
             const [currentCount, currentLevel] = await redis.mget(COUNTER_KEY, UPGRADE_LEVEL_KEY);
@@ -108,36 +109,35 @@ io.on('connection', async (socket) => {
                 io.emit('update-upgrade', { level: newLevel, nextCost: nextCost });
                 io.emit('update-click-value', newClickValue);
             } else {
-                socket.emit('error-message', 'Nicht genug Cookies für das Upgrade!');
+                socket.emit('error-message', 'Not enough cookies for the upgrade!');
             }
         } catch (error) {
-            console.error('Fehler beim Kauf des Upgrades:', error);
-            socket.emit('error-message', 'Fehler beim Kauf des Upgrades.');
+            console.error('Error purchasing upgrade:', error);
+            socket.emit('error-message', 'Error purchasing the upgrade.');
         }
     });
 
     socket.on('disconnect', () => {
-        console.log('Ein Benutzer hat sich getrennt');
+        console.log('A user disconnected');
     });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server läuft auf Port ${PORT}`);
-    console.log(`Öffne http://localhost:${PORT} in deinem Browser`);
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`Open http://localhost:${PORT} in your browser`);
 });
 
-// Zähler in Redis initialisieren
+// Initialize keys in Redis
 async function initializeKeys() {
     try {
         const [counterExists, levelExists, valueExists] = await redis.exists(COUNTER_KEY, UPGRADE_LEVEL_KEY, CLICK_VALUE_KEY);
         if (!counterExists) await redis.set(COUNTER_KEY, 0);
         if (!levelExists) await redis.set(UPGRADE_LEVEL_KEY, 0);
-        if (!valueExists) await redis.set(CLICK_VALUE_KEY, 1); // Startwert für Klick = 1
-
-        console.log(`Spielstatus in Redis initialisiert.`);
+        if (!valueExists) await redis.set(CLICK_VALUE_KEY, 1);
+        console.log(`Game state initialized in Redis.`);
     } catch (error) {
-        console.error('Fehler beim Initialisieren des Spielstatus:', error);
+        console.error('Error initializing game state:', error);
     }
 }
 initializeKeys();
