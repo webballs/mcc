@@ -7,14 +7,17 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
     <div class="container">
-        <h1>Globaler Cookie-Clicker</h1>
-        <div id="counter-display">Klicks: <span id="click-count">0</span></div>
-        <img id="cookie" src="cookie.png" alt="Großer Cookie">
-        <p>Klicke auf den Cookie, um den globalen Zähler zu erhöhen!</p>
+        <h1>Multiplayer Cookie Clicker</h1>
+        <div class="score-display">
+            <span id="click-count">0</span> Cookies
+        </div>
+        <img src="cookie.png" id="cookie" alt="Klicke auf den Cookie">
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
+
 </body>
 </html>
