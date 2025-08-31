@@ -3,7 +3,8 @@ const cookie = document.getElementById('cookie');
 const clickCountSpan = document.getElementById('click-count');
 const clickValueSpan = document.getElementById('click-value');
 const upgradeLevelSpan = document.getElementById('upgrade-level');
-const remainingCookiesSpan = document.getElementById('remaining-cookies');
+const upgradeProgressTextSpan = document.getElementById('upgrade-progress-text');
+const upgradeProgressBar = document.getElementById('upgrade-progress-bar');
 const upgradeButton = document.getElementById('upgrade-button');
 
 // Store the next upgrade cost here so we can use it in update-counter
@@ -23,19 +24,19 @@ upgradeButton.addEventListener('click', () => {
 // Server responses
 socket.on('update-counter', (count) => {
     clickCountSpan.textContent = count;
-    // New logic: calculate and display remaining cookies
-    const remaining = nextUpgradeCost - count;
     
-    if (remaining > 0) {
-        remainingCookiesSpan.textContent = remaining;
-        remainingCookiesSpan.classList.add('red-text');
-        upgradeButton.disabled = true;
-        upgradeButton.textContent = `Buy Upgrade`;
-    } else {
-        remainingCookiesSpan.textContent = 'READY!';
-        remainingCookiesSpan.classList.remove('red-text');
-        upgradeButton.disabled = false;
-        upgradeButton.textContent = `Buy Upgrade (${nextUpgradeCost} Cookies)`;
+    // Calculate and display progress text and bar
+    if (nextUpgradeCost > 0) {
+        const cookiesNeeded = Math.max(0, nextUpgradeCost - count);
+        upgradeProgressTextSpan.textContent = `${count} / ${nextUpgradeCost} Cookies`;
+        const percentage = Math.min(100, (count / nextUpgradeCost) * 100);
+        upgradeProgressBar.style.width = `${percentage}%`;
+        
+        if (count >= nextUpgradeCost) {
+            upgradeButton.disabled = false;
+        } else {
+            upgradeButton.disabled = true;
+        }
     }
 });
 
@@ -45,6 +46,7 @@ socket.on('update-click-value', (value) => {
 
 socket.on('update-upgrade', (data) => {
     upgradeLevelSpan.textContent = data.level;
+    
     // Update the cost variable and trigger a counter update to refresh the UI
     nextUpgradeCost = data.nextCost;
     // This call ensures the UI is immediately refreshed after a purchase

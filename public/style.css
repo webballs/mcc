@@ -128,13 +128,27 @@ h1 {
     margin-bottom: 10px;
 }
 
-.upgrade-item .upgrade-cost {
-    color: #ecf0f1;
+.upgrade-item #upgrade-progress-text {
     font-weight: bold;
+    color: #ecf0f1;
+    margin-top: 0;
 }
 
-.red-text {
-    color: #e74c3c;
+.progress-bar-container {
+    width: 100%;
+    height: 15px;
+    background-color: #7f8c8d;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: #2ecc71;
+    width: 0%;
+    transition: width 0.3s ease-in-out;
 }
 
 .action-button {
